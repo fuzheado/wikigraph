@@ -277,13 +277,23 @@ def main():
 
     Usage:
         python -m wikigraph.pipeline 2026 5 29 [-o output.json] [--min-entity 3]
-        python -m wikigraph.pipeline --articles "Article A,Article B,..." [-o output.json]
+        python -m wikigraph.pipeline --articles "Article A,Article B" [-o output.json]
+        cat articles.txt | python -m wikigraph.pipeline --stdin [-o output.json]
     """
     out_file = "graph_data.json"
     min_entity_share = 3
 
+    # --stdin mode: read one article title per line from stdin
+    if "--stdin" in sys.argv:
+        titles = [line.strip() for line in sys.stdin if line.strip()]
+        for i, arg in enumerate(sys.argv):
+            if arg == "-o" and i + 1 < len(sys.argv):
+                out_file = sys.argv[i + 1]
+            if arg == "--min-entity" and i + 1 < len(sys.argv):
+                min_entity_share = int(sys.argv[i + 1])
+        output = build_graph_from_list(titles, min_entity_share=min_entity_share)
     # --articles mode: build from a comma-separated list
-    if "--articles" in sys.argv:
+    elif "--articles" in sys.argv:
         idx = sys.argv.index("--articles")
         titles = sys.argv[idx + 1].split(",") if idx + 1 < len(sys.argv) else []
         # Parse optional flags after --articles
@@ -302,7 +312,8 @@ def main():
     else:
         print("Usage:")
         print("  python -m wikigraph.pipeline 2026 5 29 [-o output.json]")
-        print("  python -m wikigraph.pipeline --articles 'Article A,Article B,...' [-o output.json]")
+        print("  python -m wikigraph.pipeline --articles 'Article A,Article B' [-o output.json]")
+        print("  cat articles.txt | python -m wikigraph.pipeline --stdin [-o output.json]")
         sys.exit(1)
 
     with open(out_file, "w") as f:
