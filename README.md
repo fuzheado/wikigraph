@@ -70,23 +70,28 @@ for node in graph["nodes"]:
           f"({node['type']}, cluster={node.get('cluster', 'N/A')})")
 ```
 
-### 4. Visualize the graph
+### 4. View the graph
 
-The JSON output follows the standard D3 force-graph format. Drop it into any
-D3.js force layout, observable notebook, or graph tool:
+#### Built-in interactive viewer
 
-```javascript
-// In a D3 script or Observable notebook
-d3.json("my_graph.json").then(data => {
-  const simulation = d3.forceSimulation(data.nodes)
-    .force("link", d3.forceLink(data.links))
-    .force("charge", d3.forceManyBody().strength(-120))
-    .force("center", d3.forceCenter(width / 2, height / 2));
-  // ... render nodes and links
-});
+```bash
+# View a pre-built graph
+python view_graph.py my_graph.json
+
+# Build and view in one step
+python view_graph.py --date 2026 5 29
+
+# Auto-find graph_data.json in current directory
+python view_graph.py
 ```
 
-Or use it with NetworkX or Gephi by converting the JSON back:
+Opens your browser with a D3.js force-directed graph — search, hover
+highlighting, drag nodes, zoom/pan, tooltips. Zero extra dependencies.
+
+#### Use with other tools
+
+The JSON output follows the standard D3 force-graph format and works with
+NetworkX, Gephi, Observable, or any D3 force layout:
 
 ```python
 import json, networkx as nx
@@ -453,6 +458,8 @@ wikigraph/
 │   ├── builder.py     Node, edge, and helper node construction
 │   └── serializers.py NetworkX → D3 JSON serialization
 └── pipeline.py        Orchestration: fetch → enrich → analyze → build → export
+
+view_graph.py          Browser-based interactive graph viewer
 ```
 
 ---
@@ -471,6 +478,9 @@ python -m pytest tests/ -v
 
 # Build a graph
 python -m wikigraph.pipeline 2026 5 29 -o graph.json
+
+# View in browser
+python view_graph.py graph.json
 ```
 
 ---
