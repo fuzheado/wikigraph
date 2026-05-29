@@ -81,6 +81,14 @@ document.getElementById("stats").textContent =
   `${GRAPH_DATA.meta.total_articles} articles \u00b7 ${GRAPH_DATA.meta.total_nodes} nodes \u00b7 ${GRAPH_DATA.meta.total_edges} connections`;
 
 const svg = d3.select("#graph");
+// Set SVG dimensions to fill the viewport so D3's coordinate system
+// matches the visual display, not the default 300x150 intrinsic size.
+function resizeSVG() {
+  svg.attr("width", window.innerWidth)
+     .attr("height", window.innerHeight - 36);
+}
+resizeSVG();
+window.addEventListener("resize", resizeSVG);
 const container = svg.append("g").attr("class", "container");
 
 // Use the SVG element's actual dimensions for the force center, not window.innerWidth/Height.
@@ -118,8 +126,9 @@ const simulation = d3.forceSimulation(nodes)
     .distance(d => d.type === "wikilink" ? 120 : 90)
     .strength(d => d.type === "wikilink" ? 0.5 : 0.2))
   .force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? getCharge() * 0.2 : getCharge()))
-  .force("center", d3.forceCenter(...getCenter()))
+  .force("center", d3.forceCenter(...getCenter()).strength(0.03))
   .force("collide", d3.forceCollide(d => d.type === "helper" ? 12 : Math.min(d.size || 22, 34) + 10))
+  .alphaDecay(0.002)
   .on("tick", ticked);
 
 // Randomize initial positions proportional to viewport size
