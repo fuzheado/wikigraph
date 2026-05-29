@@ -65,7 +65,7 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
     log("Fetching article metadata (async, 5 concurrent)...")
     metadata = asyncio.run(fetch_all_metadata(
         titles, max_concurrent=MAX_CONCURRENT,
-        progress_callback=progress_callback, headers=headers))
+        progress_callback=progress_callback or log, headers=headers))
     log(f"Got metadata for {len(metadata)} articles")
 
     failed_articles = []
@@ -185,7 +185,7 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
     log("Fetching article metadata (async)...")
     metadata = asyncio.run(fetch_all_metadata(
         article_ids_list, max_concurrent=MAX_CONCURRENT,
-        progress_callback=progress_callback, headers=headers))
+        progress_callback=progress_callback or log, headers=headers))
     log(f"Got metadata for {len(metadata)} articles")
 
     failed_articles = []

@@ -94,8 +94,10 @@ async def fetch_all_metadata(titles, max_concurrent=None, progress_callback=None
         for i, coro in enumerate(asyncio.as_completed(tasks)):
             title, meta = await coro
             results[title] = meta
-            if progress_callback and (i + 1) % 5 == 0:
-                progress_callback(f"Fetched article metadata ({i + 1}/{total})")
-            elif progress_callback and i == 0:
-                progress_callback(f"Fetched article metadata ({i + 1}/{total})")
+            if progress_callback:
+                # Show article name for small batches, just count for large ones
+                if total <= 25:
+                    progress_callback(f"Fetched: {title.replace('_', ' ')} ({i + 1}/{total})")
+                elif (i + 1) % 5 == 0 or i == 0:
+                    progress_callback(f"Fetched article metadata ({i + 1}/{total})")
         return results
