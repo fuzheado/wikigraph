@@ -100,8 +100,8 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
     n_wiki = add_wikilink_edges(articles, article_ids, G)
     log(f"  {n_wiki} direct wikilink edges between top 100 articles")
 
-    add_category_helpers(articles, article_ids, G, min_cat_share=3)
-    add_entity_helpers(articles, entity_map, G, min_entity_share=min_entity_share)
+    add_category_helpers(articles, article_ids, G, min_cat_share=3, max_share_ratio=0.6)
+    add_entity_helpers(articles, entity_map, G, min_entity_share=min_entity_share, max_share_ratio=0.6)
 
     nodes_data, links_data = serialize_graph(G)
 
@@ -220,8 +220,8 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
     n_wiki = add_wikilink_edges(articles, article_ids, G)
     log(f"  {n_wiki} direct wikilink edges")
 
-    add_category_helpers(articles, article_ids, G, min_cat_share=2)
-    add_entity_helpers(articles, entity_map, G, min_entity_share=min_entity_share)
+    add_category_helpers(articles, article_ids, G, min_cat_share=2, max_share_ratio=0.6)
+    add_entity_helpers(articles, entity_map, G, min_entity_share=min_entity_share, max_share_ratio=0.6)
 
     nodes_data, links_data = serialize_graph(G)
 

@@ -37,19 +37,26 @@ def add_wikilink_edges(articles, article_ids, G):
     return len(link_weight)
 
 
-def add_category_helpers(articles, article_ids, G, min_cat_share=3):
+def add_category_helpers(articles, article_ids, G, min_cat_share=3, max_share_ratio=None):
     """Add helper nodes for categories shared by min_cat_share articles.
 
     Helper node IDs are prefixed with 'cat:'. Edges connect each helper
     to all articles sharing that category. Helps visually group articles
     by theme (e.g., "2026 films", "UFC fighters").
+
+    If max_share_ratio is set (e.g. 0.6), categories connected to more
+    than that fraction of articles are skipped — filtering out maintenance
+    categories like "Coordinates on Wikidata" that connect to everything.
     """
     all_cats = collections.defaultdict(list)
     for a in articles:
         for cat in a.get("categories", []):
             all_cats[cat].append(a["id"])
 
+    total = len(articles)
     for cat, aids in all_cats.items():
+        if max_share_ratio and len(aids) > total * max_share_ratio:
+            continue
         if len(aids) >= min_cat_share:
             hid = f"cat:{cat}"
             G.add_node(hid, type="helper", helper_type="category",
@@ -58,13 +65,14 @@ def add_category_helpers(articles, article_ids, G, min_cat_share=3):
                 G.add_edge(hid, aid, weight=1, type="category")
 
 
-def add_entity_helpers(articles, entity_map, G, min_entity_share=3):
+def add_entity_helpers(articles, entity_map, G, min_entity_share=3, max_share_ratio=None):
     """Add helper nodes for named entities shared by min_entity_share articles.
 
     Helper node IDs are prefixed with 'ent:'. Filters out:
     - Entities whose normalized name matches an article title
     - Entities in the blacklist (nationalities, generic terms)
     - Single-word entities that are common given names
+    - If max_share_ratio set, entities connected to too many articles
     """
     from ..analyzer.ner import normalize_entity
 
@@ -105,6 +113,8 @@ def add_entity_helpers(articles, entity_map, G, min_entity_share=3):
         if " " not in norm_entity and norm_entity.lower() in common_names:
             continue
         matched = [a for a in aids if a in article_ids]
+        if max_share_ratio and len(matched) > len(articles) * max_share_ratio:
+            continue
         if len(matched) >= min_entity_share:
             hid = f"ent:{entity}"
             G.add_node(hid, type="helper", helper_type="entity",
