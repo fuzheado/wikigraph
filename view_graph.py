@@ -70,9 +70,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 <script>
 const GRAPH_DATA = __GRAPH_DATA__;
 
-const WIDTH = window.innerWidth;
-const HEIGHT = window.innerHeight - 36;
-
 const edgeColors = { wikilink: "#6c5ce7", category: "#00b894", entity: "#fdcb6e" };
 
 const nodes = GRAPH_DATA.nodes.map(d => ({ ...d }));
@@ -85,6 +82,21 @@ document.getElementById("stats").textContent =
 
 const svg = d3.select("#graph");
 const container = svg.append("g").attr("class", "container");
+
+// Use the SVG element's actual dimensions for the force center, not window.innerWidth/Height.
+// Falls back to window dimensions if SVG hasn't been laid out yet.
+function getCenter() {
+  const box = document.getElementById("graph-container");
+  if (box) {
+    const r = box.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) return [r.width / 2, r.height / 2];
+  }
+  const el = document.getElementById("graph");
+  const w = el.clientWidth || window.innerWidth || 1280;
+  const h = el.clientHeight || window.innerHeight - 36 || 720;
+  return [Math.max(w / 2, 400), Math.max(h / 2, 300)];
+}
+
 const zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", event => {
   container.attr("transform", event.transform);
 });
@@ -95,9 +107,15 @@ const simulation = d3.forceSimulation(nodes)
     .distance(d => d.type === "wikilink" ? 80 : 60)
     .strength(d => d.type === "wikilink" ? 0.8 : 0.3))
   .force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? -40 : -120))
-  .force("center", d3.forceCenter(WIDTH / 2, HEIGHT / 2))
+  .force("center", d3.forceCenter(...getCenter()))
   .force("collide", d3.forceCollide(d => d.type === "helper" ? 8 : Math.min(d.size || 15, 25) + 5))
   .on("tick", ticked);
+
+// Recenter on window resize
+window.addEventListener("resize", () => {
+  simulation.force("center", d3.forceCenter(...getCenter()));
+  simulation.alpha(0.3).restart();
+});
 
 const link = container.append("g").selectAll("line")
   .data(links).join("line")
