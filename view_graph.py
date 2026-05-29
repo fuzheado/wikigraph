@@ -54,6 +54,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   border-radius: 6px; font-size: 11px; pointer-events: none; z-index: 200;
   max-width: 280px; display: none; border: 1px solid #555;
 }
+.ctrl { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+.ctrl input[type=checkbox] { accent-color: #6c5ce7; }
+.ctrl input[type=range] { width: 60px; height: 3px; accent-color: #6c5ce7; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -61,6 +64,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   <h1>wikigraph viewer</h1>
   <span class="stats" id="stats"></span>
   <span style="flex:1"></span>
+  <label class="ctrl"><input type="checkbox" id="toggle-helpers" checked> Helpers</label>
+  <label class="ctrl">Spacing <input type="range" id="spacing" min="0" max="100" value="27"></label>
   <input type="text" id="search" placeholder="Search...">
 </div>
 <svg id="graph">
@@ -110,15 +115,15 @@ const zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", event => {
 });
 svg.call(zoom);
 
-// Compute force charge proportional to viewport area so the graph
-// fills the screen at any size. Returns strength for article nodes;
-// helper nodes get 20% of that.
+// Compute force charge proportional to viewport area, scaled by the
+// spacing slider (0-100). Default spacing=27 gives multiplier ≈ 1.0.
 function getCharge() {
   const el = document.getElementById("graph");
   const w = el.clientWidth || window.innerWidth || 1280;
   const h = el.clientHeight || window.innerHeight - 36 || 720;
-  // Scale: at 1280x720 area=921k, charge ≈ -300. At 3000x1600 area=4.8M, charge ≈ -690.
-  return -Math.sqrt(w * h) * 0.31;
+  const spacingVal = parseInt(document.getElementById("spacing").value) || 27;
+  const mult = 0.2 + (spacingVal / 100) * 2.96;  // 0.2 at min, ~3.16 at max
+  return -Math.sqrt(w * h) * 0.31 * mult;
 }
 
 const simulation = d3.forceSimulation(nodes)
@@ -131,6 +136,23 @@ const simulation = d3.forceSimulation(nodes)
   .alphaDecay(0.002)
   .on("tick", ticked);
 
+// Helper node toggle
+let showHelpers = true;
+document.getElementById("toggle-helpers").addEventListener("change", function() {
+  showHelpers = this.checked;
+  node.style("display", d => (d.type === "helper" && !showHelpers) ? "none" : null);
+  link.style("display", l => {
+    if (showHelpers) return null;
+    return (l.type === "category" || l.type === "entity") ? "none" : null;
+  });
+});
+
+// Spacing slider
+document.getElementById("spacing").addEventListener("input", function() {
+  simulation.force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? getCharge() * 0.2 : getCharge()));
+  simulation.alpha(0.3).restart();
+});
+
 // Randomize initial positions proportional to viewport size
 nodes.forEach(d => {
   const [cx, cy] = getCenter();
@@ -140,7 +162,7 @@ nodes.forEach(d => {
 
 // Recenter and rescale on window resize
 window.addEventListener("resize", () => {
-  simulation.force("center", d3.forceCenter(...getCenter()));
+  simulation.force("center", d3.forceCenter(...getCenter()).strength(0.03));
   simulation.force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? getCharge() * 0.2 : getCharge()));
   simulation.alpha(0.3).restart();
 });
