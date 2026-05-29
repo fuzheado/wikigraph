@@ -80,6 +80,10 @@ cat articles.txt | python -m wikigraph --stdin -o ai_graph.json
 
 # Quick comma-separated list
 python -m wikigraph --articles "Quantum computing,Qubit,Shor's algorithm" -o quantum.json
+
+# Try a sample dataset — 120 architecture topics from WikiProject Architecture
+cat architecture-articles.txt | python -m wikigraph --stdin -o architecture.json
+python view_graph.py architecture.json
 ```
 
 Or from Python:
