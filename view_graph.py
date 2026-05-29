@@ -102,25 +102,37 @@ const zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", event => {
 });
 svg.call(zoom);
 
+// Compute force charge proportional to viewport area so the graph
+// fills the screen at any size. Returns strength for article nodes;
+// helper nodes get 20% of that.
+function getCharge() {
+  const el = document.getElementById("graph");
+  const w = el.clientWidth || window.innerWidth || 1280;
+  const h = el.clientHeight || window.innerHeight - 36 || 720;
+  // Scale: at 1280x720 area=921k, charge ≈ -300. At 3000x1600 area=4.8M, charge ≈ -690.
+  return -Math.sqrt(w * h) * 0.31;
+}
+
 const simulation = d3.forceSimulation(nodes)
   .force("link", d3.forceLink(links).id(d => d.id)
-    .distance(d => d.type === "wikilink" ? 100 : 80)
-    .strength(d => d.type === "wikilink" ? 0.6 : 0.2))
-  .force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? -60 : -300))
+    .distance(d => d.type === "wikilink" ? 120 : 90)
+    .strength(d => d.type === "wikilink" ? 0.5 : 0.2))
+  .force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? getCharge() * 0.2 : getCharge()))
   .force("center", d3.forceCenter(...getCenter()))
-  .force("collide", d3.forceCollide(d => d.type === "helper" ? 10 : Math.min(d.size || 20, 30) + 8))
+  .force("collide", d3.forceCollide(d => d.type === "helper" ? 12 : Math.min(d.size || 22, 34) + 10))
   .on("tick", ticked);
 
-// Randomize initial positions to avoid all nodes starting at center
+// Randomize initial positions proportional to viewport size
 nodes.forEach(d => {
   const [cx, cy] = getCenter();
-  d.x = cx + (Math.random() - 0.5) * 600;
-  d.y = cy + (Math.random() - 0.5) * 400;
+  d.x = cx + (Math.random() - 0.5) * (getCenter()[0] * 1.2);
+  d.y = cy + (Math.random() - 0.5) * (getCenter()[1] * 1.2);
 });
 
-// Recenter on window resize
+// Recenter and rescale on window resize
 window.addEventListener("resize", () => {
   simulation.force("center", d3.forceCenter(...getCenter()));
+  simulation.force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? getCharge() * 0.2 : getCharge()));
   simulation.alpha(0.3).restart();
 });
 
