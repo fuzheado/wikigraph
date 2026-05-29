@@ -278,6 +278,14 @@ cluster = assign_cluster(
 # → "Sports"
 ```
 
+The 11 clusters are broad enough to cover the topics that typically trend in
+Wikipedia's daily most-viewed list while being specific enough to create
+meaningful visual groupings. They emerged from observing recurring patterns —
+sporting events, entertainment releases, political news, celebrity deaths —
+rather than from a formal taxonomy like Wikipedia's WikiProject hierarchy.
+The keyword lists in `wikigraph/analyzer/clustering.py` can be customized for
+different domains or languages.
+
 #### `extract_entities(texts)`
 
 Run spaCy NER on a dict of `{article_id: text}` to extract named entities
