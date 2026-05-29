@@ -57,6 +57,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 .ctrl { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
 .ctrl input[type=checkbox] { accent-color: #6c5ce7; }
 .ctrl input[type=range] { width: 60px; height: 3px; accent-color: #6c5ce7; cursor: pointer; }
+
+#side-panel {
+  position: fixed; top: 36px; right: -400px; width: 380px; bottom: 0;
+  background: rgba(30,30,50,0.97); backdrop-filter: blur(10px);
+  border-left: 1px solid #444; z-index: 99; transition: right 0.3s ease;
+  overflow-y: auto; padding: 20px;
+}
+#side-panel.open { right: 0; }
+#side-panel .close { float: right; cursor: pointer; font-size: 20px; color: #888; }
+#side-panel .close:hover { color: #fff; }
+#side-panel h2 { font-size: 16px; margin-bottom: 4px; color: #fff; }
+#side-panel .meta { font-size: 12px; color: #888; margin-bottom: 10px; }
+#side-panel .cluster-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 11px; font-weight: 600; margin-bottom: 10px;
+}
+#side-panel img { max-width: 100%; border-radius: 6px; margin-bottom: 10px; }
+#side-panel .summary { font-size: 13px; line-height: 1.5; color: #ccc; margin-bottom: 10px; }
+#side-panel .connections h3 { font-size: 13px; color: #aaa; margin-bottom: 6px; }
+#side-panel .connections ul { list-style: none; font-size: 12px; }
+#side-panel .connections li { padding: 2px 0; color: #888; cursor: pointer; }
+#side-panel .connections li:hover { color: #ccc; }
+#side-panel a.ext-link { color: #6c5ce7; text-decoration: none; font-size: 13px; display: inline-block; margin-top: 8px; }
+#side-panel a.ext-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -72,6 +96,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   <defs><clipPath id="round-clip"><circle r="25"/></clipPath></defs>
 </svg>
 <div id="tooltip"></div>
+<div id="side-panel">
+  <span class="close" onclick="closePanel()">✕</span>
+  <div id="panel-content"></div>
+</div>
 <script>
 const GRAPH_DATA = __GRAPH_DATA__;
 
@@ -230,7 +258,96 @@ node.on("mouseover", function(event, d) {
   node.style("opacity", 1);
   link.style("opacity", 0.3);
   document.getElementById("tooltip").style.display = "none";
+}).on("click", function(event, d) {
+  event.stopPropagation();
+  clickNode(d);
 });
+
+function clickNode(d) {
+  document.getElementById("tooltip").style.display = "none";
+  const panel = document.getElementById("side-panel");
+  const content = document.getElementById("panel-content");
+
+  // Gather connected articles with edge types
+  const connected = [];
+  const seen = new Set();
+  GRAPH_DATA.links.forEach(l => {
+    const sid = l.source.id || l.source;
+    const tid = l.target.id || l.target;
+    if (sid === d.id && GRAPH_DATA.nodes.find(n => n.id === tid && n.type === "article")) {
+      if (!seen.has(tid)) { seen.add(tid); connected.push({ id: tid, type: l.type }); }
+    }
+    if (tid === d.id && GRAPH_DATA.nodes.find(n => n.id === sid && n.type === "article")) {
+      if (!seen.has(sid)) { seen.add(sid); connected.push({ id: sid, type: l.type }); }
+    }
+  });
+
+  let html = "";
+  const edgeIcon = { wikilink: "\uD83D\uDD17", category: "\uD83D\uDCC1", entity: "\uD83D\uDD24" };
+
+  if (d.type === "helper") {
+    const label = d.label || d.id.replace(/^(cat:|ent:)/, "");
+    const htype = d.helper_type === "category" ? "Shared Category" : "Shared Entity";
+    const wikiUrl = d.helper_type === "category"
+      ? `https://en.wikipedia.org/wiki/Category:${encodeURIComponent(label.replace(/ /g, "_"))}`
+      : `https://en.wikipedia.org/wiki/${encodeURIComponent(label.replace(/ /g, "_"))}`;
+    html += `<h2>${escHtml(label)}</h2>`;
+    html += `<div class="meta">${htype}</div>`;
+    html += `<div class="connections"><h3>Connected articles (${connected.length})</h3><ul>`;
+    connected.forEach(c => {
+      const cn = GRAPH_DATA.nodes.find(n => n.id === c.id);
+      const name = cn ? cn.title || cn.label : c.id;
+      html += `<li onclick="clickNode(nodeMap['${c.id}'])">${edgeIcon[c.type] || "\u2022"} ${escHtml(name)}</li>`;
+    });
+    html += `</ul></div>`;
+    html += `<a class="ext-link" href="${wikiUrl}" target="_blank">Open on Wikipedia \u2192</a>`;
+  } else {
+    const color = d.color || "#6c5ce7";
+    html += `<h2>${escHtml(d.title)}</h2>`;
+    if (d.rank) html += `<div class="meta">#${d.rank} \u00b7 ${fmtViews(d.views)} views</div>`;
+    if (d.cluster) html += `<div class="cluster-tag" style="background:${color}44;color:${color}">${d.cluster}</div>`;
+    const imgUrl = d.image_url || d.page_image_url;
+    if (imgUrl && !imgUrl.includes("W.svg")) {
+      html += `<img src="${escHtml(imgUrl)}" alt="${escHtml(d.title)}" onerror="this.style.display='none'">`;
+    }
+    if (d.summary) html += `<div class="summary">${d.summary}</div>`;
+    if (connected.length > 0) {
+      html += `<div class="connections"><h3>Connected (${connected.length})</h3><ul>`;
+      connected.forEach(c => {
+        const cn = GRAPH_DATA.nodes.find(n => n.id === c.id);
+        const name = cn ? cn.title || cn.label : c.id;
+        html += `<li onclick="clickNode(nodeMap['${c.id}'])">${edgeIcon[c.type] || "\u2022"} ${escHtml(name)}</li>`;
+      });
+      html += `</ul></div>`;
+    }
+    html += `<a class="ext-link" href="${d.url || 'https://en.wikipedia.org/wiki/' + d.id}" target="_blank">Open on Wikipedia \u2192</a>`;
+  }
+
+  content.innerHTML = html;
+  panel.classList.add("open");
+}
+
+function closePanel() {
+  document.getElementById("side-panel").classList.remove("open");
+}
+
+// Close panel when clicking the graph background
+svg.on("click", function() {
+  closePanel();
+});
+
+function escHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+function fmtViews(v) {
+  if (!v) return "";
+  if (v >= 1000000) return (v / 1000000).toFixed(1) + "M";
+  if (v >= 1000) return (v / 1000).toFixed(1) + "K";
+  return v.toString();
+}
 
 function ticked() {
   link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
