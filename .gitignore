@@ -1,0 +1,35 @@
+# Byte-compiled
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Cache
+.cache/
+
+# Build output
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Test artifacts
+.pytest_cache/
+
+# Generated data
+graph_data.json

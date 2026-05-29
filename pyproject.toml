@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wikigraph"
+version = "0.1.0"
+description = "Build interactive connection graphs from Wikipedia, Wikimedia Commons, and Wikidata items"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "Andrew Lih", email = "andrew.lih@gmail.com"},
+]
+keywords = ["wikipedia", "wikidata", "wikimedia", "graph", "visualization", "d3", "networkx"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+dependencies = [
+    "httpx>=0.28",
+    "networkx>=3",
+    "spacy>=3.8",
+    "click>=8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[project.scripts]
+wikigraph = "wikigraph.pipeline:main"
+
+[tool.setuptools.packages.find]
+include = ["wikigraph*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
