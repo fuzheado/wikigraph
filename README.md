@@ -36,7 +36,7 @@ python -m pytest tests/
 
 ```bash
 # Build the Hatnote daily top 100 for a specific date
-python -m wikigraph.pipeline 2026 5 29 -o my_graph.json
+python -m wikigraph 2026 5 29 -o my_graph.json
 
 # Output:
 #   Fetching top 100 for 2026/5/29...
@@ -70,7 +70,31 @@ for node in graph["nodes"]:
           f"({node['type']}, cluster={node.get('cluster', 'N/A')})")
 ```
 
-### 4. View the graph
+### 4. Build from any article list
+
+```bash
+# From stdin (one article per line — handles titles with commas)
+echo "Artificial intelligence" > articles.txt
+echo "Machine learning" >> articles.txt
+cat articles.txt | python -m wikigraph --stdin -o ai_graph.json
+
+# Quick comma-separated list
+python -m wikigraph --articles "Quantum computing,Qubit,Shor's algorithm" -o quantum.json
+```
+
+Or from Python:
+
+```python
+from wikigraph import build_graph_from_list
+
+data = build_graph_from_list([
+    "Artificial intelligence", "Machine learning", "Deep learning",
+    "Neural network", "ChatGPT", "OpenAI"
+])
+print(f"{data['meta']['total_nodes']} nodes, {data['meta']['total_edges']} edges")
+```
+
+### 5. View the graph
 
 #### Built-in interactive viewer
 
@@ -85,8 +109,13 @@ python view_graph.py --date 2026 5 29
 python view_graph.py
 ```
 
-Opens your browser with a D3.js force-directed graph — search, hover
-highlighting, drag nodes, zoom/pan, tooltips. Zero extra dependencies.
+Opens your browser with a D3.js force-directed graph. Features:
+- **Click** any node → side panel with details, image, connected articles
+- **Hover** → highlights connected subgraph + tooltip
+- **Search** → filter nodes by name in real-time
+- **Helpers toggle** → show/hide category and entity helper nodes
+- **Spacing slider** → adjust force repulsion to spread or tighten nodes
+- **Drag** nodes, **zoom/pan**, tooltips. Zero extra dependencies.
 
 #### Use with other tools
 
@@ -186,6 +215,26 @@ data = build_graph("2026", "5", "17",
 | `meta` | `dict` | `{date, total_articles, total_nodes, total_edges, user_agent, ua_compliant, failed_articles, failed_count}` |
 | `nodes` | `list[dict]` | Each node has `{id, type, title/label, size, color, cluster, image_url, ...}` |
 | `links` | `list[dict]` | Each edge has `{source, target, weight, type}` |
+
+#### `build_graph_from_list(titles, min_entity_share=3, verbose=True, progress_callback=None, user_agent=None)`
+
+Build a connection graph from an arbitrary list of Wikipedia article titles.
+Same pipeline as `build_graph()` but starts from a user-provided list instead
+of the Hatnote top 100.
+
+```python
+from wikigraph import build_graph_from_list
+
+data = build_graph_from_list([
+    "Quantum computing", "Qubit", "Shor's algorithm",
+    "Quantum supremacy", "Quantum entanglement"
+])
+# → same {meta, nodes, links} format as build_graph()
+```
+
+**Parameters:**
+- `titles` — list of article titles (spaces or underscores OK)
+- All other parameters same as `build_graph()`
 
 #### `latest_available_date()`
 
@@ -484,8 +533,11 @@ python -m spacy download en_core_web_sm
 # Run tests
 python -m pytest tests/ -v
 
-# Build a graph
-python -m wikigraph.pipeline 2026 5 29 -o graph.json
+# Build a graph (date mode)
+python -m wikigraph 2026 5 29 -o graph.json
+
+# Build from article list
+cat articles.txt | python -m wikigraph --stdin -o graph.json
 
 # View in browser
 python view_graph.py graph.json
