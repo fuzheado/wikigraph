@@ -22,7 +22,8 @@ def serialize_graph(G):
         node["id"] = nid
         if node.get("type") == "article":
             node["color"] = CLUSTER_COLORS.get(node.get("cluster", "Other"), CLUSTER_COLORS["Other"])
-            node["size"] = max(6, min(35, math.log2(node.get("views", 1000)) * 2.5))
+            views = node.get("views", 0) or 1000  # handle 0 and missing
+            node["size"] = max(6, min(35, math.log2(views) * 2.5))
         else:
             node["color"] = HELPER_COLOR
         for k in ("core_cats", "links", "extract", "history"):

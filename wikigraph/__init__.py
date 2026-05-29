@@ -9,5 +9,5 @@ Package modules:
     graph       — NetworkX graph construction and serialization
     pipeline    — main build_graph() orchestration and CLI entry point
 """
-from .pipeline import build_graph, latest_available_date, main
+from .pipeline import build_graph, build_graph_from_list, latest_available_date, main
 from .config import CACHE_DIR

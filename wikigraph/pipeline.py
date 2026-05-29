@@ -134,6 +134,126 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
     return output
 
 
+def build_graph_from_list(titles, min_entity_share=3, verbose=True,
+                          progress_callback=None, user_agent=None):
+    """Build a connection graph from an arbitrary list of Wikipedia article titles.
+
+    Unlike build_graph() which fetches the Hatnote daily top 100, this accepts
+    any list of article names and runs the full pipeline: enrich → analyze →
+    build → export.
+
+    Args:
+        titles: list of article titles (spaces or underscores OK, e.g.
+                ["Quantum computing", "Qubit"] or ["Quantum_computing", "Qubit"]).
+        min_entity_share: minimum number of articles sharing an entity for it
+                         to become a helper node (default 3).
+        verbose: print progress to stdout.
+        progress_callback: optional callback(msg) for streaming status updates.
+        user_agent: optional User-Agent string override.
+
+    Returns:
+        dict with {meta, nodes, links} keys, same format as build_graph().
+    """
+    def log(msg):
+        if verbose:
+            print(msg)
+        if progress_callback:
+            progress_callback(msg)
+
+    ua = user_agent or HEADERS["User-Agent"]
+    if not _is_valid_ua(ua):
+        log("WARNING: User-Agent may not be Wikimedia-compliant (no email or URL).")
+    ua_ok = _is_valid_ua(ua)
+    headers = {"User-Agent": ua}
+
+    # Normalize titles to underscored IDs and build article dicts
+    articles = []
+    for i, t in enumerate(titles):
+        tid = t.strip().replace(" ", "_")
+        articles.append({
+            "id": tid,
+            "title": t.strip(),
+            "rank": i + 1,
+            "summary": "",
+            "image_url": "",
+            "url": f"https://en.wikipedia.org/wiki/{tid}",
+        })
+
+    log(f"Building graph for {len(articles)} articles...")
+
+    article_ids_list = [a["id"] for a in articles]
+    log("Fetching article metadata (async)...")
+    metadata = asyncio.run(fetch_all_metadata(
+        article_ids_list, max_concurrent=MAX_CONCURRENT,
+        progress_callback=progress_callback, headers=headers))
+    log(f"Got metadata for {len(metadata)} articles")
+
+    failed_articles = []
+    for a in articles:
+        meta = metadata.get(a["id"], {})
+        all_cats = meta.get("categories", [])
+        a["categories"] = [c for c in all_cats if is_meaningful_category(c)]
+        a["links"] = meta.get("links", [])
+        a["extract"] = meta.get("extract", "")
+        a["page_image_url"] = meta.get("page_image_url", "")
+        if not all_cats and not a["links"] and len(a["extract"]) < 50:
+            failed_articles.append(a["title"])
+
+    meaningful_cat_count = sum(len(a["categories"]) for a in articles)
+    link_count_total = sum(len(a["links"]) for a in articles)
+    log(f"  {meaningful_cat_count} meaningful categories, {link_count_total} total links")
+
+    log("Extracting named entities with spaCy...")
+    texts = {}
+    for a in articles:
+        t = (a.get("summary", "") + " " + a.get("extract", "")).strip()
+        if t:
+            texts[a["id"]] = t
+    entity_map, _ = extract_entities(texts)
+    log(f"Found {len(entity_map)} unique named entities")
+
+    log("Building graph...")
+    G = nx.Graph()
+    article_ids = {a["id"] for a in articles}
+
+    build_graph_nodes(articles, G)
+    n_wiki = add_wikilink_edges(articles, article_ids, G)
+    log(f"  {n_wiki} direct wikilink edges")
+
+    add_category_helpers(articles, article_ids, G, min_cat_share=2)
+    add_entity_helpers(articles, entity_map, G, min_entity_share=min_entity_share)
+
+    nodes_data, links_data = serialize_graph(G)
+
+    output = {
+        "meta": {
+            "date": "custom",
+            "total_articles": len(articles),
+            "total_nodes": len(nodes_data),
+            "total_edges": len(links_data),
+            "user_agent": ua,
+            "ua_compliant": ua_ok,
+            "failed_articles": failed_articles,
+            "failed_count": len(failed_articles),
+        },
+        "nodes": nodes_data,
+        "links": links_data,
+    }
+
+    if verbose:
+        n_articles = sum(1 for n in nodes_data if n.get("type") == "article")
+        n_helpers = sum(1 for n in nodes_data if n.get("type") == "helper")
+        n_cat = sum(1 for n in nodes_data if n.get("helper_type") == "category")
+        n_ent = sum(1 for n in nodes_data if n.get("helper_type") == "entity")
+        n_wiki_e = sum(1 for l in links_data if l["type"] == "wikilink")
+        n_cats = sum(1 for l in links_data if l["type"] == "category")
+        n_ents = sum(1 for l in links_data if l["type"] == "entity")
+        log(f"  {n_articles} articles + {n_helpers} helpers ({n_cat} categories, {n_ent} entities) = {len(nodes_data)} nodes")
+        log(f"  {len(links_data)} edges ({n_wiki_e} wikilinks, {n_cats} cat, {n_ents} ent)")
+
+    return output
+
+
 def latest_available_date():
     """Walk backwards from today to find a date with Hatnote data."""
     from datetime import date, timedelta
@@ -153,12 +273,37 @@ def latest_available_date():
 
 
 def main():
-    """CLI entry point: builds graph and saves to a file."""
-    year, month, day = sys.argv[1:4] if len(sys.argv) >= 4 else latest_available_date()
-    out_file = sys.argv[4] if len(sys.argv) >= 5 else "graph_data.json"
-    min_entity_share = int(sys.argv[5]) if len(sys.argv) >= 6 else 3
+    """CLI entry point: builds graph and saves to a file.
 
-    output = build_graph(year, month, day, min_entity_share)
+    Usage:
+        python -m wikigraph.pipeline 2026 5 29 [-o output.json] [--min-entity 3]
+        python -m wikigraph.pipeline --articles "Article A,Article B,..." [-o output.json]
+    """
+    out_file = "graph_data.json"
+    min_entity_share = 3
+
+    # --articles mode: build from a comma-separated list
+    if "--articles" in sys.argv:
+        idx = sys.argv.index("--articles")
+        titles = sys.argv[idx + 1].split(",") if idx + 1 < len(sys.argv) else []
+        # Parse optional flags after --articles
+        for i, arg in enumerate(sys.argv):
+            if arg == "-o" and i + 1 < len(sys.argv):
+                out_file = sys.argv[i + 1]
+            if arg == "--min-entity" and i + 1 < len(sys.argv):
+                min_entity_share = int(sys.argv[i + 1])
+        output = build_graph_from_list(titles, min_entity_share=min_entity_share)
+    # Date mode: build from Hatnote top 100
+    elif len(sys.argv) >= 4 and sys.argv[1].isdigit():
+        year, month, day = sys.argv[1:4]
+        out_file = sys.argv[4] if len(sys.argv) >= 5 and not sys.argv[4].startswith("-") else out_file
+        min_entity_share = int(sys.argv[6]) if len(sys.argv) >= 7 else min_entity_share
+        output = build_graph(year, month, day, min_entity_share)
+    else:
+        print("Usage:")
+        print("  python -m wikigraph.pipeline 2026 5 29 [-o output.json]")
+        print("  python -m wikigraph.pipeline --articles 'Article A,Article B,...' [-o output.json]")
+        sys.exit(1)
 
     with open(out_file, "w") as f:
         json.dump(output, f, indent=2)
