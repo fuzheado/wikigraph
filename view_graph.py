@@ -104,12 +104,19 @@ svg.call(zoom);
 
 const simulation = d3.forceSimulation(nodes)
   .force("link", d3.forceLink(links).id(d => d.id)
-    .distance(d => d.type === "wikilink" ? 80 : 60)
-    .strength(d => d.type === "wikilink" ? 0.8 : 0.3))
-  .force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? -40 : -120))
+    .distance(d => d.type === "wikilink" ? 100 : 80)
+    .strength(d => d.type === "wikilink" ? 0.6 : 0.2))
+  .force("charge", d3.forceManyBody().strength(d => d.type === "helper" ? -60 : -300))
   .force("center", d3.forceCenter(...getCenter()))
-  .force("collide", d3.forceCollide(d => d.type === "helper" ? 8 : Math.min(d.size || 15, 25) + 5))
+  .force("collide", d3.forceCollide(d => d.type === "helper" ? 10 : Math.min(d.size || 20, 30) + 8))
   .on("tick", ticked);
+
+// Randomize initial positions to avoid all nodes starting at center
+nodes.forEach(d => {
+  const [cx, cy] = getCenter();
+  d.x = cx + (Math.random() - 0.5) * 600;
+  d.y = cy + (Math.random() - 0.5) * 400;
+});
 
 // Recenter on window resize
 window.addEventListener("resize", () => {
