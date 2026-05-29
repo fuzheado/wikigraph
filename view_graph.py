@@ -192,10 +192,11 @@ node.each(function(d) {
     const r = Math.min(d.size || 12, 25);
     g.append("circle").attr("r", r).attr("fill", "none").attr("stroke", d.color || "#6c5ce7").attr("stroke-width", 2).attr("opacity", 0.8);
     g.append("circle").attr("r", r-1).attr("fill", d.color || "#6c5ce7").attr("fill-opacity", 0.3);
-    if (d.image_url && !d.image_url.includes("W.svg")) {
+    const imgUrl = d.image_url || d.page_image_url;
+    if (imgUrl && !imgUrl.includes("W.svg")) {
       const img = new Image();
-      img.onload = () => { g.append("image").attr("xlink:href", d.image_url).attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2).attr("clip-path", "url(#round-clip)"); };
-      img.src = d.image_url;
+      img.onload = () => { g.append("image").attr("xlink:href", imgUrl).attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2).attr("clip-path", "url(#round-clip)"); };
+      img.src = imgUrl;
     }
     g.append("text").attr("dx", 0).attr("dy", r + 12).attr("text-anchor", "middle").style("font-size", "10px")
       .text((d.title || "").length > 20 ? (d.title || "").slice(0, 19) + "\u2026" : (d.title || ""));
