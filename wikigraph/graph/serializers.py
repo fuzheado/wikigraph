@@ -26,7 +26,7 @@ def serialize_graph(G):
             node["size"] = max(6, min(35, math.log2(views) * 2.5))
         else:
             node["color"] = HELPER_COLOR
-        for k in ("core_cats", "links", "extract", "history"):
+        for k in ("core_cats", "links", "history"):
             node.pop(k, None)
         nodes_data.append(node)
 

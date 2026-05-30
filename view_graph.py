@@ -310,7 +310,8 @@ function clickNode(d) {
     if (imgUrl && !imgUrl.includes("W.svg")) {
       html += `<img src="${escHtml(imgUrl)}" alt="${escHtml(d.title)}" onerror="this.style.display='none'">`;
     }
-    if (d.summary) html += `<div class="summary">${d.summary}</div>`;
+    const blurb = d.summary || d.extract;
+    if (blurb) html += `<div class="summary">${escHtml(blurb)}</div>`;
     if (connected.length > 0) {
       html += `<div class="connections"><h3>Connected (${connected.length})</h3><ul>`;
       connected.forEach(c => {
