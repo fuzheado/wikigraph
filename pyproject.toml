@@ -37,6 +37,7 @@ dev = [
 
 [project.scripts]
 wikigraph = "wikigraph.pipeline:main"
+wikigraph-server = "server:main"
 
 [tool.setuptools.packages.find]
 include = ["wikigraph*"]
