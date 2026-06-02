@@ -31,5 +31,5 @@ Thumbs.db
 # Test artifacts
 .pytest_cache/
 
-# Generated data
-graph_data.json
+# Generated data — all build output graphs
+*.json
