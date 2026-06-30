@@ -136,6 +136,59 @@ G = nx.node_link_graph(data)
 print(f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 ```
 
+### 6. Run the web server
+
+The web server provides an interactive browser UI with two modes for
+building graphs on demand:
+
+```bash
+# Start the server (default port 8000)
+python server.py
+
+# Or specify a port
+python server.py 8080
+```
+
+Open **http://localhost:8000** in your browser.
+
+#### Top Articles mode
+
+Select a date from the dropdown and click **Build** to fetch that day's
+Hatnote top 100 and generate a graph. This is the same data as the CLI
+`python -m wikigraph 2026 5 29` command.
+
+#### Custom List mode
+
+Click the **Custom List** tab to switch modes. Paste one Wikipedia article
+title per line into the textarea, then click **Build Graph**.
+
+The server accepts articles from the `architecture-articles.txt` sample,
+PagePile exports, or any other list — just one title per line.
+
+```text
+Artificial intelligence
+Machine learning
+Deep learning
+Neural network
+ChatGPT
+```
+
+The graph is built using the same `build_graph_from_list()` pipeline as the
+CLI `--stdin` mode, with live progress streaming via NDJSON.
+
+#### API endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | GET | HTML viewer (above UI) |
+| `/api/graph?year=&month=&day=` | GET | NDJSON stream for date-based build |
+| `/api/graph-from-list` | POST | NDJSON stream for custom article list.
+  Body: `{"titles": ["Article A", "Article B", ...]}` |
+
+Both API endpoints stream NDJSON with `{"type": "progress", "message": "..."}`
+lines during build, followed by `{"type": "graph", "data": {...}}` on
+success or `{"type": "error", "message": "..."}` on failure.
+
 ---
 
 ## Data Pipeline
@@ -520,7 +573,8 @@ wikigraph/
 │   └── serializers.py NetworkX → D3 JSON serialization
 └── pipeline.py        Orchestration: fetch → enrich → analyze → build → export
 
-view_graph.py          Browser-based interactive graph viewer
+view_graph.py          Browser-based interactive graph viewer (static file)
+server.py              HTTP server with interactive web UI and graph API endpoints
 ```
 
 ---
@@ -543,8 +597,12 @@ python -m wikigraph 2026 5 29 -o graph.json
 # Build from article list
 cat articles.txt | python -m wikigraph --stdin -o graph.json
 
-# View in browser
+# View in browser (static file viewer)
 python view_graph.py graph.json
+
+# Start the interactive web server
+python server.py
+# → http://localhost:8000
 ```
 
 ---
