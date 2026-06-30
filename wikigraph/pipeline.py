@@ -12,6 +12,7 @@ import networkx as nx
 from .config import _is_valid_ua, HEADERS, MAX_CONCURRENT
 from .sources.hatnote import fetch_top100
 from .enricher.mw_api import fetch_all_metadata
+from .enricher.wikidata_images import fetch_wikidata_images_batch
 from .analyzer.categories import is_meaningful_category
 from .analyzer.ner import extract_entities
 from .graph.builder import (
@@ -76,8 +77,24 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
         a["links"] = meta.get("links", [])
         a["extract"] = meta.get("extract", "")
         a["page_image_url"] = meta.get("page_image_url", "")
+        a["wikibase_item"] = meta.get("wikibase_item", "")
         if not all_cats and not a["links"] and len(a["extract"]) < 50:
             failed_articles.append(a["title"])
+
+    # Fetch Wikidata P18 images for articles that have QIDs
+    qids = [a["wikibase_item"] for a in articles if a.get("wikibase_item")]
+    if qids:
+        log(f"Fetching Wikidata images for {len(qids)} articles...")
+        wd_images = fetch_wikidata_images_batch(qids, headers=headers)
+        for a in articles:
+            qid = a.get("wikibase_item", "")
+            if qid and wd_images.get(qid):
+                a["wikidata_image_url"] = wd_images[qid]
+            else:
+                a["wikidata_image_url"] = ""
+    else:
+        for a in articles:
+            a["wikidata_image_url"] = ""
 
     meaningful_cat_count = sum(len(a["categories"]) for a in articles)
     link_count_total = sum(len(a["links"]) for a in articles)
@@ -196,8 +213,24 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
         a["links"] = meta.get("links", [])
         a["extract"] = meta.get("extract", "")
         a["page_image_url"] = meta.get("page_image_url", "")
+        a["wikibase_item"] = meta.get("wikibase_item", "")
         if not all_cats and not a["links"] and len(a["extract"]) < 50:
             failed_articles.append(a["title"])
+
+    # Fetch Wikidata P18 images for articles that have QIDs
+    qids = [a["wikibase_item"] for a in articles if a.get("wikibase_item")]
+    if qids:
+        log(f"Fetching Wikidata images for {len(qids)} articles...")
+        wd_images = fetch_wikidata_images_batch(qids, headers=headers)
+        for a in articles:
+            qid = a.get("wikibase_item", "")
+            if qid and wd_images.get(qid):
+                a["wikidata_image_url"] = wd_images[qid]
+            else:
+                a["wikidata_image_url"] = ""
+    else:
+        for a in articles:
+            a["wikidata_image_url"] = ""
 
     meaningful_cat_count = sum(len(a["categories"]) for a in articles)
     link_count_total = sum(len(a["links"]) for a in articles)

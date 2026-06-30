@@ -27,7 +27,7 @@ async def fetch_single_metadata(client, title, sem):
     async with sem:
         params = {
             "action": "query",
-            "prop": "categories|links|extracts|pageimages",
+            "prop": "categories|links|extracts|pageimages|pageprops",
             "titles": title,
             "format": "json",
             "cllimit": 200,
@@ -37,6 +37,7 @@ async def fetch_single_metadata(client, title, sem):
             "exchars": 800,
             "piprop": "thumbnail",
             "pithumbsize": 300,
+            "ppprop": "wikibase_item",
         }
         url = f"{MW_API}?{urlencode(params)}"
         for attempt in range(3):
@@ -47,7 +48,7 @@ async def fetch_single_metadata(client, title, sem):
                 pages = data.get("query", {}).get("pages", {})
                 for pid, info in pages.items():
                     if int(pid) < 0:
-                        result = {"categories": [], "links": [], "extract": ""}
+                        result = {"categories": [], "links": [], "extract": "", "page_image_url": "", "wikibase_item": ""}
                         _cache_set("mw", cache_key, result)
                         return title, result
                     cats = []
@@ -62,7 +63,9 @@ async def fetch_single_metadata(client, title, sem):
                     extract = info.get("extract", "")
                     thumbnail = info.get("thumbnail", {})
                     page_image_url = thumbnail.get("source", "") if thumbnail else ""
-                    result = {"categories": cats, "links": links, "extract": extract, "page_image_url": page_image_url}
+                    pageprops = info.get("pageprops", {})
+                    wikibase_item = pageprops.get("wikibase_item", "")
+                    result = {"categories": cats, "links": links, "extract": extract, "page_image_url": page_image_url, "wikibase_item": wikibase_item}
                     _cache_set("mw", cache_key, result)
                     return title, result
             except Exception as e:
@@ -71,8 +74,8 @@ async def fetch_single_metadata(client, title, sem):
                     await asyncio.sleep(delay)
                 else:
                     print(f"  Failed to fetch {title}: {e}")
-                    return title, {"categories": [], "links": [], "extract": ""}
-        return title, {"categories": [], "links": [], "extract": ""}
+                    return title, {"categories": [], "links": [], "extract": "", "page_image_url": "", "wikibase_item": ""}
+        return title, {"categories": [], "links": [], "extract": "", "page_image_url": "", "wikibase_item": ""}
 
 
 async def fetch_all_metadata(titles, max_concurrent=None, progress_callback=None, headers=None):

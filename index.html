@@ -287,6 +287,7 @@ svg { width: 100%; height: 100%; }
     <label><input type="checkbox" id="toggle-labels"> Labels</label>
     <label><input type="checkbox" id="toggle-legend"> Legend</label>
     <div class="sep"></div>
+    <button class="btn-icon" onclick="cycleImageSource()" id="img-src-btn" title="Image source (click to cycle)">&#128247; Article</button>
     <button class="btn-icon" onclick="togglePlayback()" id="playback-btn" title="Auto-advance through articles">&#9654; Play</button>
     <button class="btn-icon" onclick="cyclePlaybackSpeed()" id="speed-btn" title="Time per node (click to cycle)">3s</button>
     <button class="btn-icon" onclick="cyclePlaybackZoom()" id="zoom-btn" title="Playback zoom level">&#128269; 1x</button>
@@ -604,6 +605,8 @@ function syncUrl() {
   if (fs !== 10) params.set("fontsize", String(fs));
   const order = loadPlaybackOrder();
   if (order !== "rank") params.set("order", order);
+  var imgSrc = loadImageSource();
+  if (imgSrc !== "article") params.set("image", imgSrc);
   const qs = params.toString();
   const newUrl = window.location.pathname + (qs ? "?" + qs : "");
   window.history.replaceState({}, "", newUrl);
@@ -622,6 +625,10 @@ function applyPreGraphParams(params) {
   if (params.has("fontsize")) {
     localStorage.setItem("wiki_font_size", parseInt(params.get("fontsize")));
     document.getElementById("fontsize-btn").textContent = "Aa " + params.get("fontsize");
+  }
+  if (params.has("image")) {
+    localStorage.setItem("wiki_image_source", params.get("image"));
+    document.getElementById("img-src-btn").textContent = "&#128247; " + (IMG_LABELS[params.get("image")] || "Article");
   }
   if (params.has("order")) {
     localStorage.setItem("wiki_playback_order", params.get("order"));
@@ -828,6 +835,57 @@ function showError(msg) {
 
 // ─── Legend ─────────────────────────────────────────────────
 
+// ─── Image source ──────────────────────────────────────────
+
+var IMG_SOURCES = ["article", "wikidata"];
+var IMG_LABELS = { article: "Article", wikidata: "Wikidata" };
+
+function loadImageSource() {
+  return localStorage.getItem("wiki_image_source") || "article";
+}
+
+function cycleImageSource() {
+  var cur = loadImageSource();
+  var next = "article";
+  for (var i = 0; i < IMG_SOURCES.length; i++) {
+    if (IMG_SOURCES[i] === cur) {
+      next = IMG_SOURCES[(i + 1) % IMG_SOURCES.length];
+      break;
+    }
+  }
+  localStorage.setItem("wiki_image_source", next);
+  document.getElementById("img-src-btn").textContent = "&#128247; " + IMG_LABELS[next];
+  syncUrl();
+  // Refresh node images if graph is loaded
+  if (graphData) refreshNodeImages();
+}
+
+function getArticleImage(d) {
+  var src = loadImageSource();
+  if (src === "wikidata") {
+    return d.wikidata_image_url || d.page_image_url || d.image_url || "";
+  }
+  // "article" source: prefer page_image_url (MW thumbnail), fallback to hatnote image_url
+  return d.page_image_url || d.image_url || d.wikidata_image_url || "";
+}
+
+function refreshNodeImages() {
+  // Re-render images on existing nodes using the new source
+  if (!nodeGroup) return;
+  nodeGroup.selectAll(".node image").remove();
+  nodeGroup.selectAll(".node").each(function(d) {
+    var g = d3.select(this);
+    if (d.type === "helper") return;
+    var r = Math.min(d.size || 12, 25);
+    var imgUrl = getArticleImage(d);
+    if (imgUrl && !imgUrl.includes("W.svg")) {
+      g.append("image").attr("href", imgUrl).attr("xlink:href", imgUrl)
+        .attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2)
+        .attr("clip-path", "url(#round-clip)");
+    }
+  });
+}
+
 function getClusterColor(cluster) {
   var map = {
     "Sports":"#e74c3c","Music":"#9b59b6","Film & TV":"#3498db","Politics":"#f39c12",
@@ -911,9 +969,9 @@ function renderGraph(data) {
         .attr("r", r).attr("stroke", d.color || "#6c5ce7");
       g.append("circle").attr("r", r-1)
         .attr("fill", d.color || "#6c5ce7").attr("fill-opacity", 0.3);
-      var imgUrl = d.page_image_url || d.image_url;
+      var imgUrl = getArticleImage(d);
       if (imgUrl && !imgUrl.includes("W.svg")) {
-        g.append("image").attr("xlink:href", imgUrl)
+        g.append("image").attr("href", imgUrl).attr("xlink:href", imgUrl)
           .attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2)
           .attr("clip-path", "url(#round-clip)");
       }
@@ -1073,7 +1131,7 @@ function clickNode(d) {
     if (d.cluster) {
       html += '<div class="cluster-tag" style="background:' + color + "44;color:" + color + '">' + d.cluster + "</div>";
     }
-    var imgUrl = d.page_image_url || d.image_url;
+    var imgUrl = getArticleImage(d);
     if (imgUrl && !imgUrl.includes("W.svg")) {
       html += '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(d.title) + '" onerror="this.style.display=\'none\'">';
     }
@@ -1347,6 +1405,10 @@ function escHtml(s) { var d = document.createElement("div"); d.textContent = s; 
   // Set default date to today
   var today = formatDate(new Date());
   document.getElementById("date-picker").value = today;
+
+  // Initialize image source button text from saved preference
+  var initImgSrc = loadImageSource();
+  document.getElementById("img-src-btn").textContent = "&#128247; " + IMG_LABELS[initImgSrc];
 
   setupOnce();
   var params = new URLSearchParams(window.location.search);
