@@ -138,8 +138,8 @@ print(f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
 ### 6. Run the web server
 
-The web server provides an interactive browser UI with two modes for
-building graphs on demand:
+The web server serves the full web app from `index.html` with a polished
+D3.js interface and two modes for building graphs:
 
 ```bash
 # Start the server (default port 8000)
@@ -153,8 +153,8 @@ Open **http://localhost:8000** in your browser.
 
 #### Top Articles mode
 
-Select a date from the dropdown and click **Build** to fetch that day's
-Hatnote top 100 and generate a graph. This is the same data as the CLI
+Select a date with the date picker (or navigate with ◀ ▶) to fetch that
+day's Hatnote top 100 and generate a graph. Same data as the CLI
 `python -m wikigraph 2026 5 29` command.
 
 #### Custom List mode
@@ -162,8 +162,8 @@ Hatnote top 100 and generate a graph. This is the same data as the CLI
 Click the **Custom List** tab to switch modes. Paste one Wikipedia article
 title per line into the textarea, then click **Build Graph**.
 
-The server accepts articles from the `architecture-articles.txt` sample,
-PagePile exports, or any other list — just one title per line.
+Accepted from `architecture-articles.txt`, PagePile exports, or any other
+list — one title per line.
 
 ```text
 Artificial intelligence
@@ -173,21 +173,58 @@ Neural network
 ChatGPT
 ```
 
-The graph is built using the same `build_graph_from_list()` pipeline as the
-CLI `--stdin` mode, with live progress streaming via NDJSON.
+#### Controls
+
+| Control | Action |
+|---|---|
+| **Search** | Filter articles by name in real-time |
+| **Helpers** toggle | Show/hide category and entity helper nodes |
+| **Labels** toggle | Show/hide all node labels |
+| **Legend** toggle | Show/hide the color legend |
+| **Spacing** slider | Adjust force simulation repulsion |
+| **▶ Play / ⏹ Stop** | Auto-advance through articles; click to cycle speed (2s/3s/5s/8s) |
+| **🔍 zoom, Aa size, 🔢 order** | Playback zoom, label font size, play order (rank/random) |
+| **⟳ Refresh** | Clear cache and rebuild (date mode) |
+| **Ignore** list | Exclude specific articles from the graph |
+| **Hide** buttons | One-click filters (Social media, Geography) |
+| **⚙ UA settings** | View/change User-Agent; non-compliant agents trigger a warning |
+| **⚠ Failed articles** | Warning indicator with list of rate-limited articles |
+| **Hover** | Highlight connected subgraph + tooltip |
+| **Click** (article) | Open side panel with summary, image, and connections |
+| **Click** (helper) | Open side panel with connected articles |
+| **Drag** | Reposition nodes |
+| **Scroll** | Zoom in/out |
+| **Pan** | Click and drag background |
+
+#### URL Parameters
+
+All UI state can be set via URL parameters for bookmarking:
+
+| Parameter | Values | Default | Description |
+|---|---|---|---|
+| `date` | `YYYY-MM-DD` | today | Load a specific date |
+| `mode` | `custom` | — | Start in Custom List mode |
+| `ignore` | comma-separated | defaults | Articles to exclude |
+| `spacing` | `0`–`100` | `27` | Force repulsion |
+| `helpers` | `0` or `1` | `1` | Show helpers |
+| `labels` | `0` or `1` | `0` | Show labels |
+| `legend` | `0` or `1` | `0` | Show legend |
+| `speed` | `2`, `3`, `5`, `8` | `3` | Playback speed (seconds) |
+| `zoom` | `0.5`–`3` | `1` | Playback zoom level |
+| `fontsize` | `7`–`14` | `10` | Label font size |
+| `order` | `rank` or `random` | `rank` | Playback order |
 
 #### API endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/` | GET | HTML viewer (above UI) |
+| `/` | GET | Serves `index.html` |
 | `/api/graph?year=&month=&day=` | GET | NDJSON stream for date-based build |
-| `/api/graph-from-list` | POST | NDJSON stream for custom article list.
-  Body: `{"titles": ["Article A", "Article B", ...]}` |
+| `/api/graph-from-list` | POST | NDJSON stream for custom article list
+  (`{"titles": [...]}`) |
 
-Both API endpoints stream NDJSON with `{"type": "progress", "message": "..."}`
-lines during build, followed by `{"type": "graph", "data": {...}}` on
-success or `{"type": "error", "message": "..."}` on failure.
+Both API endpoints stream NDJSON with progress messages during the build,
+followed by the graph data on success or an error on failure.
 
 ---
 
@@ -573,8 +610,9 @@ wikigraph/
 │   └── serializers.py NetworkX → D3 JSON serialization
 └── pipeline.py        Orchestration: fetch → enrich → analyze → build → export
 
+index.html              D3.js force-directed graph web application
 view_graph.py          Browser-based interactive graph viewer (static file)
-server.py              HTTP server with interactive web UI and graph API endpoints
+server.py              HTTP server with web UI and graph API endpoints
 ```
 
 ---
@@ -602,7 +640,7 @@ python view_graph.py graph.json
 
 # Start the interactive web server
 python server.py
-# → http://localhost:8000
+# → http://localhost:8000 (serves index.html)
 ```
 
 ---

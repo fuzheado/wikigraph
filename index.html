@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wikigraph — Wikipedia Connection Graphs</title>
+<script src="https://tools-static.wmflabs.org/cdnjs/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+       background: #1a1a2e; color: #e0e0e0; overflow: hidden; height: 100vh; }
+
+#controls {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(26,26,46,0.95); backdrop-filter: blur(10px);
+  padding: 6px 16px; border-bottom: 1px solid #333;
+}
+.controls-row {
+  display: flex; align-items: center; gap: 10px; height: 32px;
+}
+.controls-row + .controls-row {
+  border-top: 1px solid #2a2a4a; padding-top: 4px; margin-top: 2px;
+}
+#controls h1 { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; }
+#controls h1 span { color: #888; font-weight: 400; }
+#controls .sep { width: 1px; height: 20px; background: #333; flex-shrink: 0; }
+#controls label { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; }
+#controls input[type=text] {
+  background: #2a2a4a; border: 1px solid #444; color: #e0e0e0; padding: 2px 8px;
+  border-radius: 4px; font-size: 12px; width: 140px; outline: none;
+}
+#controls input[type=text]:focus { border-color: #6c5ce7; }
+#controls input[type=checkbox] { accent-color: #6c5ce7; }
+#controls input[type=date] {
+  background: #2a2a4a; border: 1px solid #444; color: #e0e0e0; padding: 2px 6px;
+  border-radius: 4px; font-size: 12px; outline: none; cursor: pointer;
+}
+#controls input[type=date]:focus { border-color: #6c5ce7; }
+#controls .loading { font-size: 11px; color: #fdcb6e; margin-left: 4px; }
+#controls .stats { font-size: 11px; color: #555; margin-left: auto; white-space: nowrap; }
+
+.date-nav {
+  background: #2a2a4a; border: 1px solid #444; color: #999; padding: 2px 6px;
+  border-radius: 4px; font-size: 12px; cursor: pointer; line-height: 1;
+}
+.date-nav:hover { border-color: #6c5ce7; color: #e0e0e0; }
+
+.spacing-slider {
+  display: flex; align-items: center; gap: 5px; font-size: 11px; color: #888; flex-shrink: 0;
+}
+.spacing-slider input[type=range] { width: 70px; height: 3px; accent-color: #6c5ce7; cursor: pointer; }
+
+.btn-icon {
+  padding: 1px 8px; border: 1px solid #555; border-radius: 3px;
+  background: #2a2a4a; color: #888; font-size: 10px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-icon:hover { border-color: #6c5ce7; color: #ccc; }
+.btn-icon.active { background: #6c5ce744; border-color: #6c5ce7; color: #6c5ce7; }
+.btn-primary {
+  background:#6c5ce7; border:none; color:#fff; border-radius:4px;
+  padding:2px 12px; font-size:11px; cursor:pointer;
+}
+.btn-primary:hover { background:#7c6df7; }
+
+.mode-tab {
+  background: none; border: none; color: #888; padding: 2px 10px;
+  font-size: 11px; cursor: pointer; border-radius: 3px; transition: all 0.2s;
+}
+.mode-tab.active { background: #6c5ce7; color: #fff; }
+.mode-tab:hover:not(.active) { color: #ccc; }
+
+.filter-section { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.filter-label { font-size: 11px; color: #666; white-space: nowrap; }
+.filter-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: #3a3a5a; border: 1px solid #555; border-radius: 3px;
+  padding: 1px 5px; font-size: 10px; color: #ccc; margin: 0 1px;
+}
+.filter-tag .tag-remove { cursor: pointer; color: #888; font-size: 11px; line-height: 1; }
+.filter-tag .tag-remove:hover { color: #e74c3c; }
+#ignore-input {
+  background: transparent; border: none; border-bottom: 1px solid #555;
+  color: #aaa; font-size: 10px; padding: 1px 3px; width: 90px; outline: none;
+}
+#ignore-input:focus { border-color: #6c5ce7; }
+#ignore-input::placeholder { color: #555; }
+
+.hide-btn {
+  padding: 1px 8px; border: 1px solid #555; border-radius: 3px;
+  background: #2a2a4a; color: #999; font-size: 10px; cursor: pointer; transition: all 0.15s;
+}
+.hide-btn:hover { border-color: #6c5ce7; }
+.hide-btn.active { background: #e74c3c44; border-color: #e74c3c; color: #e74c3c; }
+
+.failed-warning {
+  font-size: 10px; color: #e74c3c; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.failed-warning:hover { color: #ff6b6b; }
+.failed-detail {
+  display: none; position: absolute; top: 100%; right: 0; z-index: 200;
+  background: rgba(30,30,50,0.98); border: 1px solid #e74c3c; border-radius: 6px;
+  padding: 10px 14px; min-width: 280px; max-height: 300px; overflow-y: auto;
+  margin-top: 2px; font-size: 11px; color: #ccc; line-height: 1.5;
+}
+.failed-detail.visible { display: block; }
+
+.ua-warning {
+  font-size: 11px; color: #f39c12; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.ua-warning:hover { color: #fdcb6e; }
+.ua-settings {
+  display: none; position: absolute; top: 100%; right: 0; z-index: 200;
+  background: rgba(30,30,50,0.98); border: 1px solid #555; border-radius: 6px;
+  padding: 12px 16px; min-width: 380px; margin-top: 2px;
+}
+.ua-settings.visible { display: block; }
+.ua-settings label { font-size: 11px; color: #aaa; display: block; margin-bottom: 4px; }
+.ua-settings input[type=text] { width: 100%; }
+.ua-settings .hint { font-size: 10px; color: #666; margin-top: 4px; line-height: 1.4; }
+.ua-settings .btn { margin-top: 8px; padding: 3px 12px; border: 1px solid #6c5ce7; border-radius: 4px;
+  background: #6c5ce7; color: #fff; font-size: 11px; cursor: pointer; }
+
+#graph-container {
+  position: fixed; top: 78px; left: 0; right: 0; bottom: 0;
+}
+svg { width: 100%; height: 100%; }
+
+.link { stroke-opacity: 0.3; }
+.link.wikilink { stroke: #6c5ce7; }
+.link.category { stroke: #00b894; }
+.link.entity { stroke: #fdcb6e; }
+.link.highlighted { stroke-opacity: 0.7; }
+.link.faded { stroke-opacity: 0.05; }
+
+.node { cursor: pointer; }
+.node circle.article-ring { fill: none; stroke-width: 2px; opacity: 0.8; }
+.node image { clip-path: url(#round-clip); }
+.node text { font-size: 10px; pointer-events: none; fill: #ccc;
+             text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.node.helper circle { stroke: #666; stroke-width: 1px; stroke-dasharray: 3,2; fill-opacity: 0.6; }
+.node.helper text { font-size: 9px; fill: #999; }
+.node.highlighted .article-ring { stroke-width: 3px; opacity: 1; }
+.node.highlighted text { fill: #fff; font-weight: 600; }
+.node.faded { opacity: 0.15; }
+.node.faded text { opacity: 0; }
+
+#tooltip {
+  position: fixed; background: rgba(0,0,0,0.85); color: #eee; padding: 6px 10px;
+  border-radius: 6px; font-size: 11px; pointer-events: none; z-index: 200;
+  max-width: 280px; display: none; border: 1px solid #555;
+}
+
+#side-panel {
+  position: fixed; top: 78px; right: -400px; width: 380px; bottom: 0;
+  background: rgba(30,30,50,0.97); backdrop-filter: blur(10px);
+  border-left: 1px solid #444; z-index: 99; transition: right 0.3s ease;
+  overflow-y: auto; padding: 20px;
+}
+#side-panel.open { right: 0; }
+#side-panel .close { float: right; cursor: pointer; font-size: 20px; color: #888; }
+#side-panel .close:hover { color: #fff; }
+#side-panel h2 { font-size: 18px; margin-bottom: 4px; color: #fff; }
+#side-panel .meta { font-size: 12px; color: #888; margin-bottom: 12px; }
+#side-panel .cluster-tag { display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+#side-panel img { max-width: 100%; border-radius: 6px; margin-bottom: 12px; }
+#side-panel .summary { font-size: 13px; line-height: 1.5; color: #ccc; margin-bottom: 12px; }
+#side-panel .connections h3 { font-size: 13px; color: #aaa; margin-bottom: 6px; }
+#side-panel .connections ul { list-style: none; font-size: 12px; }
+#side-panel .connections li { padding: 2px 0; color: #888; }
+#side-panel .connections li a { color: #6c5ce7; text-decoration: none; cursor: pointer; }
+#side-panel .connections li a:hover { text-decoration: underline; }
+#side-panel a.ext-link { color: #6c5ce7; text-decoration: none; font-size: 13px; display: inline-block; margin-top: 8px; }
+#side-panel a.ext-link:hover { text-decoration: underline; }
+
+#legend {
+  position: fixed; bottom: 20px; left: 20px; z-index: 50;
+  background: rgba(0,0,0,0.8); border-radius: 8px; padding: 12px 16px;
+  font-size: 11px; display: none;
+}
+#legend.visible { display: block; }
+#legend h3 { font-size: 11px; color: #aaa; margin-bottom: 6px; }
+#legend .item { display: flex; align-items: center; gap: 6px; margin: 3px 0; color: #ccc; }
+#legend .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+#legend .line-swatch { width: 20px; height: 2px; flex-shrink: 0; }
+#legend .helper-swatch { width: 10px; height: 10px; border-radius: 50%;
+    border: 1px dashed #666; background: #b0b0b0; opacity: 0.6; flex-shrink: 0; }
+
+#progress-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 300; display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.75);
+}
+#progress-overlay.visible { display: flex; }
+#progress-box {
+  background: rgba(0,0,0,0.88); border: 1px solid #555; border-radius: 10px;
+  padding: 28px 36px; text-align: center; min-width: 300px;
+}
+.progress-spinner {
+  width: 36px; height: 36px; border: 3px solid #333;
+  border-top-color: #6c5ce7; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#progress-message { font-size: 13px; color: #ccc; }
+#progress-step { font-size: 11px; color: #666; margin-top: 8px; }
+
+/* Custom list panel */
+#custom-panel {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+  background: rgba(26,26,46,0.98); backdrop-filter: blur(10px);
+  border-bottom: 1px solid #333; padding: 12px 16px;
+  display: none; gap: 10px; align-items: flex-start;
+}
+#custom-panel.open { display: flex; }
+#custom-panel textarea {
+  flex: 1; background: #2a2a4a; border: 1px solid #444; color: #e0e0e0;
+  border-radius: 4px; padding: 8px; font-size: 12px; font-family: 'SF Mono', Monaco, monospace;
+  resize: vertical; min-height: 100px; max-height: 250px; outline: none;
+}
+#custom-panel textarea:focus { border-color: #6c5ce7; }
+#custom-panel .input-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+#custom-panel .input-actions .hint { font-size: 10px; color: #666; line-height: 1.4; }
+#custom-panel .input-actions .count { font-size: 11px; color: #888; }
+
+#about-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 400; display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.6);
+}
+#about-overlay.visible { display: flex; }
+#about-box {
+  background: #1e1e36; border: 1px solid #555; border-radius: 10px;
+  padding: 28px 32px; max-width: 520px; max-height: 80vh; overflow-y: auto; position: relative;
+}
+#about-box h2 { font-size: 18px; color: #fff; margin-bottom: 4px; }
+#about-box .subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+#about-box h3 { font-size: 13px; color: #aaa; margin: 14px 0 6px; }
+#about-box p, #about-box li { font-size: 12px; color: #ccc; line-height: 1.6; }
+#about-box ul { padding-left: 18px; margin: 4px 0; }
+#about-box .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 18px; color: #888; }
+#about-box .close:hover { color: #fff; }
+#about-box .swatch-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 6px 0; }
+#about-box .swatch-row span { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #bbb; }
+#about-box .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+#about-box .line-swatch { width: 18px; height: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <div class="controls-row">
+    <h1>wikigraph</h1>
+    <div class="sep"></div>
+
+    <!-- Mode tabs -->
+    <span class="mode-tab active" data-mode="date" onclick="switchMode('date')">Top Articles</span>
+    <span class="mode-tab" data-mode="custom" onclick="switchMode('custom')">Custom List</span>
+
+    <div class="sep"></div>
+
+    <!-- Date mode controls -->
+    <span id="date-controls">
+      <button class="date-nav" onclick="goToDate(-1)" title="Previous day">&#9664;</button>
+      <input type="date" id="date-picker">
+      <button class="date-nav" onclick="goToDate(1)" title="Next day">&#9654;</button>
+      <span class="loading" id="loading-indicator"></span>
+    </span>
+
+    <!-- Custom mode controls -->
+    <span id="custom-controls" style="display:none">
+      <span id="article-count" class="ctrl" style="font-size:11px;color:#888"></span>
+    </span>
+
+    <div class="sep"></div>
+    <label>&#128269; <input type="text" id="search" placeholder="Search..."></label>
+    <div class="sep"></div>
+    <div class="spacing-slider">
+      <span>Spacing</span>
+      <input type="range" id="spacing" min="0" max="100" value="27">
+    </div>
+    <div class="sep"></div>
+    <label><input type="checkbox" id="toggle-helpers" checked> Helpers</label>
+    <label><input type="checkbox" id="toggle-labels"> Labels</label>
+    <label><input type="checkbox" id="toggle-legend"> Legend</label>
+    <div class="sep"></div>
+    <button class="btn-icon" onclick="togglePlayback()" id="playback-btn" title="Auto-advance through articles">&#9654; Play</button>
+    <button class="btn-icon" onclick="cyclePlaybackSpeed()" id="speed-btn" title="Time per node (click to cycle)">3s</button>
+    <button class="btn-icon" onclick="cyclePlaybackZoom()" id="zoom-btn" title="Playback zoom level">&#128269; 1x</button>
+    <button class="btn-icon" onclick="cycleFontSize()" id="fontsize-btn" title="Label font size">Aa 10</button>
+    <button class="btn-icon" onclick="cyclePlaybackOrder()" id="order-btn" title="Playback order">&#128290; Rank</button>
+    <div class="sep"></div>
+    <button class="btn-icon" onclick="hardRefresh()" title="Clear cache and rebuild">&#10227; Refresh</button>
+    <button class="btn-icon" onclick="toggleAbout()" title="About">About</button>
+    <div class="stats" id="stats"></div>
+    <span class="failed-warning" id="failed-warning" onclick="toggleFailedDetail()" style="display:none">&#9888;</span>
+    <div class="failed-detail" id="failed-detail">
+      <strong>Articles with failed metadata</strong><br>
+      These articles returned empty data (likely API rate-limiting).<br>
+      Try <a onclick="hardRefresh()" style="color:#f39c12;cursor:pointer">&#10227; Refresh</a> to clear and retry.
+      <div id="failed-list" style="margin-top:6px"></div>
+    </div>
+    <span class="ua-warning" id="ua-warning" onclick="toggleUASettings()" title="User-Agent settings">&#9881;</span>
+    <div class="ua-settings" id="ua-settings">
+      <label>User-Agent for MediaWiki API requests</label>
+      <input type="text" id="ua-input" placeholder="AppName/1.0 (contact: email@example.com)">
+      <div class="hint">Wikimedia requires a contact method (email or URL) in the User-Agent.
+      Non-compliant agents may be heavily rate-limited.</div>
+      <button class="btn" onclick="saveUA()">Apply</button>
+    </div>
+  </div>
+
+  <div class="controls-row">
+    <div class="filter-section">
+      <span class="filter-label">Ignore:</span>
+      <span id="ignore-tags"></span>
+      <input type="text" id="ignore-input" placeholder="+ add article...">
+    </div>
+    <div class="sep"></div>
+    <div class="filter-section">
+      <span class="filter-label">Hide:</span>
+      <button class="hide-btn" data-group="Social">Social</button>
+      <button class="hide-btn" data-group="Countries">Countries</button>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
+      <button class="btn-icon" onclick="buildCustomList()" id="build-custom-btn" style="display:none;background:#6c5ce7;color:#fff">Build Graph</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom list textarea (dropdown) -->
+<div id="custom-panel">
+  <textarea id="article-list" placeholder="Enter one Wikipedia article title per line...
+
+Example:
+Artificial intelligence
+Machine learning
+Deep learning
+Neural network
+ChatGPT"></textarea>
+  <div class="input-actions">
+    <button class="btn-primary" onclick="buildCustomList()">Build Graph</button>
+    <span class="hint">One article per line.<br>Spaces or underscores OK.</span>
+  </div>
+</div>
+
+<div id="graph-container">
+  <svg id="graph">
+    <defs><clipPath id="round-clip"><circle r="25"/></clipPath></defs>
+  </svg>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="side-panel">
+  <span class="close" onclick="closePanel()">&#x2715;</span>
+  <div id="panel-content"></div>
+</div>
+
+<div id="legend"></div>
+
+<div id="about-overlay">
+  <div id="about-box">
+    <span class="close" onclick="toggleAbout()">&#x2715;</span>
+    <h2>wikigraph</h2>
+    <div class="subtitle">Interactive Wikipedia connection graphs</div>
+    <h3>How it works</h3>
+    <p>Articles are fetched from the <strong>Hatnote API</strong> (Top Articles mode) or entered directly (Custom List mode). Each article is enriched with categories, wikilinks, and extracts from the <strong>MediaWiki API</strong>. spaCy NLP extracts named entities (people, organizations, places) from the summaries.</p>
+    <p>Three connection types are identified:</p>
+    <div class="swatch-row">
+      <span><span class="line-swatch" style="background:#6c5ce7"></span> Wikilink</span>
+      <span><span class="line-swatch" style="background:#00b894"></span> Category</span>
+      <span><span class="line-swatch" style="background:#fdcb6e"></span> Entity</span>
+    </div>
+    <p>Each article is assigned a topic cluster:</p>
+    <div class="swatch-row" id="about-colors"></div>
+    <h3>Controls</h3>
+    <ul>
+      <li><strong>Top Articles</strong> — daily top 100 from Hatnote API</li>
+      <li><strong>Custom List</strong> — paste your own article titles</li>
+      <li><strong>Search</strong> — filter articles by name</li>
+      <li><strong>Ignore</strong> — exclude specific articles</li>
+      <li><strong>Spacing</strong> — adjust node repulsion</li>
+      <li><strong>Play</strong> — auto-advance through articles</li>
+      <li><strong>⟳ Refresh</strong> — clear cache and rebuild</li>
+      <li><strong>Hover</strong> — highlight connections</li>
+      <li><strong>Click</strong> — article details + connected articles</li>
+    </ul>
+    <h3>Data</h3>
+    <p>Built with Python (httpx, NetworkX, spaCy), D3.js v7, and Wikipedia APIs. Top-100 data from the <a href="https://github.com/hatnote/top" target="_blank" style="color:#6c5ce7">hatnote/top</a> project.</p>
+    <p style="margin-top:8px;font-size:11px;color:#666">User-Agent: <span id="about-ua"></span></p>
+  </div>
+</div>
+
+<div id="progress-overlay">
+  <div id="progress-box">
+    <div class="progress-spinner"></div>
+    <div id="progress-message">Loading...</div>
+    <div id="progress-step"></div>
+  </div>
+</div>
+
+<script>
+// ─── Constants ─────────────────────────────────────────────
+
+const CLUSTER_ORDER = ["Sports","Music","Film & TV","Politics","Technology",
+  "Science & Nature","History","Geography","Death & Crime","Business","People","Other"];
+
+const FILTER_GROUPS = {
+  "Social": ["Instagram", "YouTube", "TikTok", "Twitter", "Facebook", "Snapchat", "LinkedIn", "Reddit", "WhatsApp", "Telegram", "Discord", "Pinterest", "ChatGPT"],
+  "Countries": "__cluster__Geography",
+};
+
+const DEFAULT_IGNORE = [".xxx", ".xyz", "XXX (Kendrick Lamar song)", "XXX", "XXX (film series)"];
+
+const edgeColors = { wikilink: "#6c5ce7", category: "#00b894", entity: "#fdcb6e" };
+
+// ─── State ──────────────────────────────────────────────────
+
+let graphData, svg, simulation, link, node, nodeMap;
+let container, nodeGroup, linkGroup;
+let ignoreList = [];
+let activeFilters = new Set();
+let spacingValue = 27;
+let currentMode = "date";
+let playbackIndex = -1;
+let playbackTimer = null;
+let playbackActive = false;
+let lastFetchUrl = "";
+
+// ─── Mode switching ────────────────────────────────────────
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll(".mode-tab").forEach(t =>
+    t.classList.toggle("active", t.dataset.mode === mode));
+  document.getElementById("date-controls").style.display = mode === "date" ? "" : "none";
+  document.getElementById("custom-controls").style.display = mode === "custom" ? "" : "none";
+  document.getElementById("custom-panel").classList.toggle("open", mode === "custom");
+  document.getElementById("build-custom-btn").style.display = mode === "custom" ? "" : "none";
+  // Adjust graph height
+  setTimeout(updateGraphLayout, 50);
+  syncUrl();
+}
+
+function updateGraphLayout() {
+  const container = document.getElementById("graph-container");
+  const panel = document.getElementById("custom-panel");
+  let topOffset = 78;
+  if (currentMode === "custom" && panel.classList.contains("open")) {
+    topOffset += panel.offsetHeight;
+  }
+  container.style.top = topOffset + "px";
+  if (simulation) {
+    svg.attr("height", window.innerHeight - topOffset);
+    simulation.alpha(0.3).restart();
+  }
+}
+
+// ─── Article count ─────────────────────────────────────────
+
+document.getElementById("article-list").addEventListener("input", function() {
+  const lines = this.value.split("\n").filter(l => l.trim());
+  const el = document.getElementById("article-count");
+  el.textContent = lines.length
+    ? lines.length + " article" + (lines.length === 1 ? "" : "s")
+    : "";
+});
+
+// ─── Setup ──────────────────────────────────────────────────
+
+let zoom = d3.zoom().scaleExtent([0.1, 8]).on("zoom", event => {
+  container.attr("transform", event.transform);
+});
+
+function setupOnce() {
+  document.getElementById("spacing").addEventListener("input", function() {
+    spacingValue = parseInt(this.value);
+    if (simulation) updateSpacing(spacingValue);
+    syncUrl();
+  });
+
+  document.getElementById("ignore-input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = this.value.trim();
+      if (val) { addIgnoreItem(val); this.value = ""; }
+    }
+  });
+
+  document.querySelectorAll(".hide-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      const group = this.dataset.group;
+      if (activeFilters.has(group)) { activeFilters.delete(group); this.classList.remove("active"); }
+      else { activeFilters.add(group); this.classList.add("active"); }
+      applyFilters();
+    });
+  });
+
+  document.getElementById("toggle-helpers").addEventListener("change", function() {
+    if (!node) return; applyFilters(); syncUrl();
+  });
+  document.getElementById("toggle-labels").addEventListener("change", function() {
+    if (!nodeGroup) return;
+    nodeGroup.selectAll(".node text").style("display", this.checked ? null : "none");
+    syncUrl();
+  });
+  document.getElementById("toggle-legend").addEventListener("change", function() {
+    document.getElementById("legend").classList.toggle("visible", this.checked);
+    syncUrl();
+  });
+
+  document.getElementById("search").addEventListener("input", function() {
+    if (!node || !graphData) return;
+    const q = this.value.toLowerCase().trim();
+    node.style("opacity", function(d) {
+      return !q || (d.title || d.label || "").toLowerCase().includes(q) ? 1 : 0.1;
+    });
+    link.style("opacity", function(d) {
+      if (!q) return 0.3;
+      const s = nodeMap[d.source.id || d.source];
+      const t = nodeMap[d.target.id || d.target];
+      return s && t && ((s.title||"").toLowerCase().includes(q) || (t.title||"").toLowerCase().includes(q)) ? 0.3 : 0.03;
+    });
+  });
+
+  document.getElementById("date-picker").addEventListener("change", onDateChange);
+  // ResizeObserver for custom panel
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => updateGraphLayout()).observe(document.getElementById("custom-panel"));
+  }
+  window.addEventListener("resize", () => {
+    updateGraphLayout();
+    if (simulation) simulation.alpha(0.3).restart();
+  });
+}
+
+// ─── Ignore list ────────────────────────────────────────────
+
+function initIgnoreList() {
+  const params = new URLSearchParams(window.location.search);
+  const ignoreParam = params.get("ignore");
+  if (ignoreParam) {
+    ignoreList = ignoreParam.split(",").map(s => s.trim()).filter(Boolean);
+  } else {
+    ignoreList = [...DEFAULT_IGNORE];
+  }
+  renderIgnoreTags();
+}
+
+function renderIgnoreTags() {
+  const ct = document.getElementById("ignore-tags");
+  ct.innerHTML = ignoreList.map(item =>
+    '<span class="filter-tag">' + escHtml(item) +
+    ' <span class="tag-remove" data-item="' + escHtml(item) + '">&#x2715;</span></span>'
+  ).join("");
+  ct.querySelectorAll(".tag-remove").forEach(btn => {
+    btn.addEventListener("click", () => removeIgnoreItem(btn.dataset.item));
+  });
+}
+
+function addIgnoreItem(item) {
+  item = item.trim();
+  if (!item || ignoreList.includes(item)) return;
+  ignoreList.push(item);
+  renderIgnoreTags();
+  syncUrl();
+  refetch();
+}
+
+function removeIgnoreItem(item) {
+  ignoreList = ignoreList.filter(i => i !== item);
+  renderIgnoreTags();
+  syncUrl();
+  refetch();
+}
+
+// ─── URL sync ───────────────────────────────────────────────
+
+function syncUrl() {
+  const params = new URLSearchParams();
+  const dateInput = document.getElementById("date-picker");
+  if (currentMode === "date") {
+    const parts = dateInput.value.split("-");
+    if (parts.length === 3) params.set("date", dateInput.value);
+  } else {
+    params.set("mode", "custom");
+  }
+  if (ignoreList.length > 0 && JSON.stringify(ignoreList) !== JSON.stringify(DEFAULT_IGNORE)) {
+    params.set("ignore", ignoreList.join(","));
+  }
+  if (spacingValue !== 27) params.set("spacing", String(spacingValue));
+  if (!document.getElementById("toggle-helpers").checked) params.set("helpers", "0");
+  if (!document.getElementById("toggle-labels").checked) params.set("labels", "0");
+  if (document.getElementById("toggle-legend").checked) params.set("legend", "1");
+  const speed = loadPlaybackSpeed();
+  if (speed !== 3000) params.set("speed", String(speed / 1000));
+  const z = loadPlaybackZoom();
+  if (Math.abs(z - 1) > 0.01) params.set("zoom", String(z));
+  const fs = loadFontSize();
+  if (fs !== 10) params.set("fontsize", String(fs));
+  const order = loadPlaybackOrder();
+  if (order !== "rank") params.set("order", order);
+  const qs = params.toString();
+  const newUrl = window.location.pathname + (qs ? "?" + qs : "");
+  window.history.replaceState({}, "", newUrl);
+}
+
+function applyPreGraphParams(params) {
+  if (params.has("speed")) {
+    localStorage.setItem("wiki_playback_speed", parseInt(params.get("speed")) * 1000);
+    document.getElementById("speed-btn").textContent = params.get("speed") + "s";
+  }
+  if (params.has("zoom")) {
+    localStorage.setItem("wiki_playback_zoom", parseFloat(params.get("zoom")));
+    var z = parseFloat(params.get("zoom"));
+    document.getElementById("zoom-btn").textContent = z === 1 ? "\ud83d\udd0d 1x" : "\ud83d\udd0d " + z + "x";
+  }
+  if (params.has("fontsize")) {
+    localStorage.setItem("wiki_font_size", parseInt(params.get("fontsize")));
+    document.getElementById("fontsize-btn").textContent = "Aa " + params.get("fontsize");
+  }
+  if (params.has("order")) {
+    localStorage.setItem("wiki_playback_order", params.get("order"));
+    document.getElementById("order-btn").textContent = params.get("order") === "random" ? "\ud83c\udfb2 Random" : "\ud83d\udd22 Rank";
+  }
+  if (params.has("spacing")) {
+    spacingValue = parseInt(params.get("spacing"));
+    document.getElementById("spacing").value = spacingValue;
+  }
+}
+
+function applyPostRenderParams(params) {
+  if (params.has("helpers")) { document.getElementById("toggle-helpers").checked = params.get("helpers") === "1";
+    document.getElementById("toggle-helpers").dispatchEvent(new Event("change")); }
+  if (params.has("labels")) { document.getElementById("toggle-labels").checked = params.get("labels") === "1";
+    document.getElementById("toggle-labels").dispatchEvent(new Event("change")); }
+  if (params.has("legend")) { document.getElementById("toggle-legend").checked = params.get("legend") === "1";
+    document.getElementById("toggle-legend").dispatchEvent(new Event("change")); }
+  if (params.has("spacing") && simulation) updateSpacing(parseInt(params.get("spacing")));
+  syncUrl();
+  if (params.has("play")) setTimeout(function() { togglePlayback(); }, 1500);
+}
+
+// ─── Build custom list ──────────────────────────────────────
+
+function buildCustomList() {
+  const textarea = document.getElementById("article-list");
+  const lines = textarea.value.split("\n").map(l => l.trim()).filter(l => l);
+  if (lines.length === 0) {
+    textarea.focus();
+    textarea.style.borderColor = "#e74c3c";
+    setTimeout(function() { textarea.style.borderColor = ""; }, 2000);
+    return;
+  }
+  loadGraphFromList(lines);
+}
+
+// ─── Fetch graph (date mode) ────────────────────────────────
+
+function buildUrl() {
+  const picker = document.getElementById("date-picker");
+  const parts = picker.value.split("-");
+  if (parts.length !== 3) return "";
+  var params = new URLSearchParams({
+    year: parts[0],
+    month: String(parseInt(parts[1])),
+    day: String(parseInt(parts[2]))
+  });
+  var ua = loadUA();
+  if (ua) params.set("user_agent", ua);
+  if (ignoreList.length > 0) params.set("ignore", ignoreList.join(","));
+  return "/api/graph?" + params.toString();
+}
+
+async function fetchGraph(url) {
+  lastFetchUrl = url;
+  showProgress("Fetching...");
+  var resp = await fetch(url);
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  var reader = resp.body.getReader();
+  var decoder = new TextDecoder();
+  var buffer = "";
+  while (true) {
+    var r = await reader.read();
+    if (r.done) break;
+    buffer += decoder.decode(r.value, { stream: true });
+    var lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      try {
+        var msg = JSON.parse(line);
+        if (msg.type === "graph") {
+          reader.cancel();
+          hideProgress();
+          return msg.data;
+        } else if (msg.type === "error") {
+          reader.cancel();
+          hideProgress();
+          throw new Error(msg.message);
+        } else if (msg.type === "progress") {
+          showProgress(msg.message);
+        }
+      } catch(e) { if (e.message && e.message !== "Unexpected token") throw e; }
+    }
+  }
+  hideProgress();
+  throw new Error("Incomplete stream");
+}
+
+async function loadGraphFromList(titles) {
+  showProgress("Starting...");
+  var resp = await fetch("/api/graph-from-list", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titles: titles })
+  });
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  var reader = resp.body.getReader();
+  var decoder = new TextDecoder();
+  var buffer = "";
+  while (true) {
+    var r = await reader.read();
+    if (r.done) break;
+    buffer += decoder.decode(r.value, { stream: true });
+    var lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      try {
+        var msg = JSON.parse(line);
+        if (msg.type === "graph") {
+          reader.cancel();
+          hideProgress();
+          renderGraph(msg.data);
+          return;
+        } else if (msg.type === "error") {
+          reader.cancel();
+          hideProgress();
+          showError(msg.message);
+          return;
+        } else if (msg.type === "progress") {
+          showProgress(msg.message);
+        }
+      } catch(e) { if (e.message && e.message !== "Unexpected token") throw e; }
+    }
+  }
+  hideProgress();
+}
+
+function refetch() {
+  if (currentMode === "date") {
+    var url = buildUrl();
+    if (url) loadGraph(url);
+  }
+}
+
+async function loadGraph(url) {
+  showProgress("Connecting...");
+  try {
+    var data = await fetchGraph(url);
+    renderGraph(data);
+    applyFilters();
+  } catch (e) {
+    hideProgress();
+    document.getElementById("loading-indicator").textContent = "Failed: " + e.message;
+  }
+}
+
+async function loadLatestDate() {
+  var d = new Date();
+  for (var attempt = 0; attempt < 7; attempt++) {
+    var dateStr = formatDate(d);
+    document.getElementById("date-picker").value = dateStr;
+    var parts = dateStr.split("-");
+    var url = "/api/graph?year=" + parts[0] + "&month=" + String(parseInt(parts[1])) + "&day=" + String(parseInt(parts[2]));
+    var ua = loadUA();
+    if (ua) url += "&user_agent=" + encodeURIComponent(ua);
+    try {
+      var data = await fetchGraph(url);
+      renderGraph(data);
+      applyFilters();
+      return;
+    } catch(e) {
+      d.setDate(d.getDate() - 1);
+    }
+  }
+  document.getElementById("loading-indicator").textContent = "No recent data found";
+}
+
+function onDateChange() {
+  var url = buildUrl();
+  if (url) loadGraph(url);
+}
+
+function goToDate(delta) {
+  var picker = document.getElementById("date-picker");
+  var d = new Date(picker.value + "T12:00:00");
+  if (isNaN(d.getTime())) return;
+  d.setDate(d.getDate() + delta);
+  picker.value = formatDate(d);
+  onDateChange();
+}
+
+function formatDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+// ─── Progress ───────────────────────────────────────────────
+
+function showProgress(msg) {
+  document.getElementById("progress-overlay").classList.add("visible");
+  document.getElementById("progress-message").textContent = msg || "Loading...";
+}
+function hideProgress() {
+  document.getElementById("progress-overlay").classList.remove("visible");
+}
+function showError(msg) {
+  hideProgress();
+  document.getElementById("loading-indicator").textContent = "Error: " + msg;
+}
+
+// ─── Legend ─────────────────────────────────────────────────
+
+function getClusterColor(cluster) {
+  var map = {
+    "Sports":"#e74c3c","Music":"#9b59b6","Film & TV":"#3498db","Politics":"#f39c12",
+    "Technology":"#1abc9c","Science & Nature":"#16a085","History":"#8e44ad",
+    "Geography":"#27ae60","Death & Crime":"#7f8c8d","Business":"#e67e22",
+    "People":"#2ecc71","Other":"#95a5a6"
+  };
+  return map[cluster] || "#95a5a6";
+}
+
+// ─── Render graph ───────────────────────────────────────────
+
+function renderGraph(data) {
+  graphData = data;
+  svg = d3.select("#graph");
+  svg.selectAll("*").remove();
+  container = svg.append("g").attr("class", "container");
+  svg.call(zoom);
+
+  var nodes = data.nodes.map(function(d) { return Object.assign({}, d); });
+  var links = data.links.map(function(d) { return Object.assign({}, d); });
+  nodeMap = {};
+  nodes.forEach(function(n) { nodeMap[n.id] = n; });
+
+  // Update stats
+  document.getElementById("stats").textContent =
+    data.meta.total_articles + " articles \u00b7 " +
+    data.meta.total_nodes + " nodes \u00b7 " +
+    data.meta.total_edges + " connections";
+  showUAWarning(data.meta);
+  showFailedWarning(data.meta);
+
+  // Build legend
+  buildLegend();
+
+  var topOffset = parseInt(document.getElementById("graph-container").style.top) || 78;
+  var W = window.innerWidth;
+  var H = window.innerHeight - topOffset;
+
+  simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(function(d) { return d.id; })
+      .distance(function(d) { return d.type === "wikilink" ? 80 : 60; })
+      .strength(function(d) { return d.type === "wikilink" ? 0.8 : 0.3; }))
+    .force("charge", d3.forceManyBody().strength(function(d) {
+      return d.type === "helper" ? -40 : -120;
+    }))
+    .force("center", d3.forceCenter(W / 2, H / 2))
+    .force("collide", d3.forceCollide(function(d) {
+      return d.type === "helper" ? 8 : Math.min(d.size || 15, 25) + 5;
+    }))
+    .on("tick", ticked);
+
+  linkGroup = container.append("g").attr("class", "links");
+  link = linkGroup.selectAll("line")
+    .data(links).join("line")
+    .attr("class", function(d) { return "link " + d.type; })
+    .attr("stroke-width", function(d) { return Math.max(0.5, Math.min(3, d.weight || 1)); })
+    .attr("stroke", function(d) { return edgeColors[d.type] || "#555"; });
+
+  nodeGroup = container.append("g").attr("class", "nodes");
+  node = nodeGroup.selectAll("g.node")
+    .data(nodes).join("g")
+    .attr("class", function(d) { return "node" + (d.type === "helper" ? " helper" : ""); })
+    .call(d3.drag()
+      .on("start", function(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag", function(event, d) { d.fx = event.x; d.fy = event.y; })
+      .on("end", function(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  node.each(function(d) {
+    var g = d3.select(this);
+    if (d.type === "helper") {
+      g.append("circle").attr("r", 5)
+        .attr("fill", d.color || "#b0b0b0").attr("stroke", "#666")
+        .attr("stroke-width", 1).attr("stroke-dasharray", "3,2").attr("fill-opacity", 0.6);
+      g.append("text").attr("dx", 8).attr("dy", 3)
+        .style("font-size", loadFontSize() + "px")
+        .text(truncate(d.label || "", 25));
+    } else {
+      var r = Math.min(d.size || 12, 25);
+      g.append("circle").attr("class", "article-ring")
+        .attr("r", r).attr("stroke", d.color || "#6c5ce7");
+      g.append("circle").attr("r", r-1)
+        .attr("fill", d.color || "#6c5ce7").attr("fill-opacity", 0.3);
+      var imgUrl = d.page_image_url || d.image_url;
+      if (imgUrl && !imgUrl.includes("W.svg")) {
+        g.append("image").attr("xlink:href", imgUrl)
+          .attr("x", -r).attr("y", -r).attr("width", r*2).attr("height", r*2)
+          .attr("clip-path", "url(#round-clip)");
+      }
+      g.append("text").attr("dx", 0).attr("dy", r + 12)
+        .attr("text-anchor", "middle")
+        .style("font-size", loadFontSize() + "px")
+        .text(truncate(d.title || "", 20));
+    }
+  });
+
+  node.on("mouseover", hoverOn)
+    .on("mouseout", hoverOff)
+    .on("click", function(event, d) {
+      if (playbackActive) stopPlayback();
+      clickNode(d);
+    });
+
+  if (spacingValue !== 27) updateSpacing(spacingValue);
+}
+
+function ticked() {
+  link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+  node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+}
+
+function updateSpacing(val) {
+  var mult = 0.2 + (val / 100) * 2.96;
+  simulation.force("charge", d3.forceManyBody().strength(function(d) {
+    return d.type === "helper" ? -40 * mult : -120 * mult;
+  }));
+  simulation.alpha(0.3).restart();
+}
+
+function applyFilters() {
+  if (!node || !graphData) return;
+  var hiddenIds = new Set();
+  for (var filter of activeFilters) {
+    var patterns = FILTER_GROUPS[filter];
+    if (patterns === "__cluster__Geography") {
+      graphData.nodes.forEach(function(n) {
+        if (n.type === "article" && n.cluster === "Geography") hiddenIds.add(n.id);
+      });
+    } else {
+      patterns.forEach(function(p) {
+        graphData.nodes.forEach(function(n) {
+          if (n.type === "article" && n.title === p) hiddenIds.add(n.id);
+        });
+      });
+    }
+  }
+  node.style("display", function(d) {
+    if (d.type !== "article") return document.getElementById("toggle-helpers").checked ? null : "none";
+    return hiddenIds.has(d.id) ? "none" : null;
+  });
+  link.style("display", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    if (hiddenIds.has(sid) || hiddenIds.has(tid)) return "none";
+    if (!document.getElementById("toggle-helpers").checked && (l.type === "category" || l.type === "entity")) return "none";
+    return null;
+  });
+}
+
+// ─── Hover ──────────────────────────────────────────────────
+
+function hoverOn(event, d) {
+  var connected = new Set();
+  connected.add(d.id);
+  graphData.links.forEach(function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    if (sid === d.id) connected.add(tid);
+    if (tid === d.id) connected.add(sid);
+  });
+  node.classed("faded", function(n) { return !connected.has(n.id); });
+  node.classed("highlighted", function(n) { return n.id === d.id; });
+  link.classed("faded", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    return sid !== d.id && tid !== d.id;
+  });
+  link.classed("highlighted", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    return sid === d.id || tid === d.id;
+  });
+  var tip = document.getElementById("tooltip");
+  tip.style.display = "block";
+  tip.style.left = (event.pageX + 12) + "px";
+  tip.style.top = (event.pageY - 10) + "px";
+  if (d.type === "article") {
+    tip.innerHTML = "<strong>" + escHtml(d.title) + "</strong><br>#" +
+      d.rank + " \u00b7 " + fmtViews(d.views) + " views \u00b7 " + (d.cluster || "");
+  } else {
+    tip.innerHTML = "<strong>" + escHtml(d.label || "") + "</strong> (" +
+      d.helper_type + ")<br>Connected to " + (connected.size - 1) + " articles";
+  }
+}
+
+function hoverOff() {
+  node.classed("faded", false);
+  node.classed("highlighted", false);
+  link.classed("faded", false);
+  link.classed("highlighted", false);
+  document.getElementById("tooltip").style.display = "none";
+}
+
+// ─── Side panel ─────────────────────────────────────────────
+
+function showArticle(id) {
+  var n = graphData.nodes.find(function(d) { return d.id === id; });
+  if (n) clickNode(n);
+}
+
+function clickNode(d) {
+  document.getElementById("tooltip").style.display = "none";
+  var panel = document.getElementById("side-panel");
+  var content = document.getElementById("panel-content");
+
+  var connectedArticles = [];
+  graphData.links.forEach(function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    if (sid === d.id && graphData.nodes.find(function(n) { return n.id === tid && n.type === "article"; }))
+      connectedArticles.push({ id: tid, type: l.type });
+    if (tid === d.id && graphData.nodes.find(function(n) { return n.id === sid && n.type === "article"; }))
+      connectedArticles.push({ id: sid, type: l.type });
+  });
+
+  var html = "";
+  if (d.type === "helper") {
+    var helperLabel = d.label || d.id.replace(/^(cat:|ent:)/, "");
+    var helperType = d.helper_type === "category" ? "Category" : "Named Entity";
+    var wikiUrl = d.helper_type === "category"
+      ? "https://en.wikipedia.org/wiki/Category:" + encodeURIComponent(helperLabel.replace(/ /g, "_"))
+      : "https://en.wikipedia.org/wiki/" + encodeURIComponent(helperLabel.replace(/ /g, "_"));
+    html += "<h2>" + escHtml(helperLabel) + "</h2>";
+    html += '<div class="meta">' + helperType + " helper</div>";
+    html += '<div class="connections"><h3>Connected articles (' + connectedArticles.length + ')</h3><ul>';
+    var seen = new Set();
+    connectedArticles.forEach(function(c) {
+      if (seen.has(c.id)) return; seen.add(c.id);
+      var cn = graphData.nodes.find(function(n) { return n.id === c.id; });
+      var label = cn ? cn.title || cn.label : c.id;
+      var sym = { wikilink: "\ud83d\udd17", category: "\ud83d\udcc1", entity: "\ud83d\udd24" }[c.type] || "\u2022";
+      html += "<li>" + sym + ' <a onclick="showArticle(\'' + c.id + '\')">' + escHtml(label) + "</a></li>";
+    });
+    html += "</ul></div>";
+    html += '<a class="ext-link" href="' + wikiUrl + '" target="_blank">Open on Wikipedia \u2192</a>';
+  } else {
+    var color = d.color || "#6c5ce7";
+    html += "<h2>" + escHtml(d.title) + "</h2>";
+    html += '<div class="meta">' + (d.rank ? "#" + d.rank + " \u00b7 " : "") + fmtViews(d.views) + " views</div>";
+    if (d.cluster) {
+      html += '<div class="cluster-tag" style="background:' + color + "44;color:" + color + '">' + d.cluster + "</div>";
+    }
+    var imgUrl = d.page_image_url || d.image_url;
+    if (imgUrl && !imgUrl.includes("W.svg")) {
+      html += '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(d.title) + '" onerror="this.style.display=\'none\'">';
+    }
+    if (d.summary) {
+      html += '<div class="summary">' + d.summary + "</div>";
+    }
+    if (connectedArticles.length > 0) {
+      html += '<div class="connections"><h3>Connected (' + connectedArticles.length + ')</h3><ul>';
+      var seen2 = new Set();
+      connectedArticles.forEach(function(c) {
+        if (seen2.has(c.id)) return; seen2.add(c.id);
+        var cn = graphData.nodes.find(function(n) { return n.id === c.id; });
+        var label = cn ? cn.title || cn.label : c.id;
+        var sym = { wikilink: "\ud83d\udd17", category: "\ud83d\udcc1", entity: "\ud83d\udd24" }[c.type] || "\u2022";
+        html += "<li>" + sym + ' <a onclick="showArticle(\'' + c.id + '\')">' + escHtml(label) + "</a></li>";
+      });
+      html += "</ul></div>";
+    }
+    html += '<a class="ext-link" href="' + (d.url || "https://en.wikipedia.org/wiki/" + d.id) + '" target="_blank">Open on Wikipedia \u2192</a>';
+  }
+
+  content.innerHTML = html;
+  panel.classList.add("open");
+}
+
+function closePanel() { document.getElementById("side-panel").classList.remove("open"); }
+
+// ─── Playback ───────────────────────────────────────────────
+
+function loadPlaybackSpeed() { return parseInt(localStorage.getItem("wiki_playback_speed")) || 3000; }
+function loadPlaybackZoom() { return parseFloat(localStorage.getItem("wiki_playback_zoom")) || 1; }
+function loadFontSize() { return parseInt(localStorage.getItem("wiki_font_size")) || 10; }
+function loadPlaybackOrder() { return localStorage.getItem("wiki_playback_order") || "rank"; }
+
+function cyclePlaybackSpeed() {
+  var speeds = [2000, 3000, 5000, 8000];
+  var cur = loadPlaybackSpeed();
+  var next = 2000;
+  for (var i = 0; i < speeds.length; i++) {
+    if (speeds[i] === cur) { next = speeds[(i + 1) % speeds.length]; break; }
+  }
+  localStorage.setItem("wiki_playback_speed", next);
+  document.getElementById("speed-btn").textContent = (next / 1000) + "s";
+  syncUrl();
+}
+
+function cyclePlaybackZoom() {
+  var zooms = [0.5, 1, 1.5, 2, 3];
+  var cur = loadPlaybackZoom();
+  var next = zooms[0];
+  for (var i = 0; i < zooms.length; i++) {
+    if (Math.abs(zooms[i] - cur) < 0.01) { next = zooms[(i + 1) % zooms.length]; break; }
+  }
+  localStorage.setItem("wiki_playback_zoom", next);
+  document.getElementById("zoom-btn").textContent = next === 1 ? "\ud83d\udd0d 1x" : "\ud83d\udd0d " + next + "x";
+  syncUrl();
+}
+
+function cycleFontSize() {
+  var sizes = [7, 8, 9, 10, 12, 14];
+  var cur = loadFontSize();
+  var next = sizes[0];
+  for (var i = 0; i < sizes.length; i++) {
+    if (sizes[i] === cur) { next = sizes[(i + 1) % sizes.length]; break; }
+  }
+  localStorage.setItem("wiki_font_size", next);
+  document.getElementById("fontsize-btn").textContent = "Aa " + next;
+  if (nodeGroup) nodeGroup.selectAll(".node text").style("font-size", next + "px");
+  syncUrl();
+}
+
+function cyclePlaybackOrder() {
+  var next = loadPlaybackOrder() === "rank" ? "random" : "rank";
+  localStorage.setItem("wiki_playback_order", next);
+  document.getElementById("order-btn").textContent = next === "rank" ? "\ud83d\udd22 Rank" : "\ud83c\udfb2 Random";
+  syncUrl();
+}
+
+function shuffleArray(arr) {
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  return arr;
+}
+
+function togglePlayback() {
+  if (playbackActive) { stopPlayback(); return; }
+  var articles = (graphData ? graphData.nodes : []).filter(function(n) { return n.type === "article"; });
+  if (loadPlaybackOrder() === "random") { shuffleArray(articles); }
+  else { articles.sort(function(a, b) { return a.rank - b.rank; }); }
+  if (articles.length === 0) return;
+  playbackActive = true;
+  playbackIndex = 0;
+  document.getElementById("playback-btn").textContent = "\u25a0 Stop";
+  document.getElementById("playback-btn").classList.add("active");
+  var panel = document.getElementById("side-panel");
+  panel.classList.remove("open");
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  playbackStep(articles);
+}
+
+function playbackStep(articles) {
+  if (!playbackActive || playbackIndex >= articles.length) {
+    stopPlayback();
+    return;
+  }
+  var d = articles[playbackIndex];
+  playbackIndex++;
+
+  // Center and zoom
+  var z = loadPlaybackZoom();
+  var topOffset = parseInt(document.getElementById("graph-container").style.top) || 78;
+  var W = window.innerWidth;
+  var H = window.innerHeight - topOffset;
+  svg.transition().duration(600).call(zoom.transform,
+    d3.zoomIdentity.translate(W / 2 - d.x * z, H / 2 - d.y * z).scale(z));
+
+  // Highlight
+  var connected = new Set();
+  connected.add(d.id);
+  graphData.links.forEach(function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    if (sid === d.id) connected.add(tid);
+    if (tid === d.id) connected.add(sid);
+  });
+  node.classed("faded", function(n) { return !connected.has(n.id); });
+  node.classed("highlighted", function(n) { return n.id === d.id; });
+  link.classed("faded", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    return sid !== d.id && tid !== d.id;
+  });
+  link.classed("highlighted", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    return sid === d.id || tid === d.id;
+  });
+
+  playbackTimer = setTimeout(function() { playbackStep(articles); }, loadPlaybackSpeed());
+}
+
+function stopPlayback() {
+  playbackActive = false;
+  playbackIndex = -1;
+  if (playbackTimer) { clearTimeout(playbackTimer); playbackTimer = null; }
+  document.getElementById("playback-btn").textContent = "\u25b6 Play";
+  document.getElementById("playback-btn").classList.remove("active");
+  hoverOff();
+}
+
+// ─── Helpers ────────────────────────────────────────────────
+
+function buildLegend() {
+  var leg = document.getElementById("legend");
+  leg.innerHTML = "<h3>Clusters</h3>";
+  CLUSTER_ORDER.forEach(function(c) {
+    var color = getClusterColor(c);
+    leg.innerHTML += '<div class="item"><div class="swatch" style="background:' + color + '"></div>' + c + "</div>";
+  });
+  leg.innerHTML += "<h3 style='margin-top:8px'>Connections</h3>";
+  leg.innerHTML += '<div class="item"><div class="line-swatch" style="background:' + edgeColors.wikilink + '"></div>Wikilink</div>';
+  leg.innerHTML += '<div class="item"><div class="line-swatch" style="background:' + edgeColors.category + '"></div>Category</div>';
+  leg.innerHTML += '<div class="item"><div class="line-swatch" style="background:' + edgeColors.entity + '"></div>Entity</div>';
+  leg.innerHTML += "<h3 style='margin-top:8px'>Nodes</h3>";
+  leg.innerHTML += '<div class="item"><div class="swatch" style="background:#6c5ce7"></div>Article</div>';
+  leg.innerHTML += '<div class="item"><div class="helper-swatch"></div>Helper</div>';
+}
+
+function showUAWarning(meta) {
+  var el = document.getElementById("ua-warning");
+  if (meta && meta.ua_compliant === false) {
+    el.style.display = "inline-flex";
+    el.title = "Non-compliant User-Agent may be rate-limited. Click to configure.";
+  } else {
+    el.style.display = "none";
+  }
+}
+
+function showFailedWarning(meta) {
+  var wrn = document.getElementById("failed-warning");
+  var det = document.getElementById("failed-detail");
+  var lst = document.getElementById("failed-list");
+  if (meta && meta.failed_count > 0) {
+    wrn.style.display = "inline-flex";
+    wrn.title = meta.failed_count + " articles had failed metadata";
+    lst.innerHTML = meta.failed_articles.map(function(n) { return escHtml(n); }).join("<br>");
+  } else {
+    wrn.style.display = "none";
+    det.classList.remove("visible");
+  }
+}
+
+function toggleFailedDetail() { document.getElementById("failed-detail").classList.toggle("visible"); }
+
+// ─── UA settings ────────────────────────────────────────────
+
+function loadUA() { return localStorage.getItem("wiki_user_agent") || ""; }
+function saveUA() {
+  var val = document.getElementById("ua-input").value.trim();
+  if (val) localStorage.setItem("wiki_user_agent", val);
+  else localStorage.removeItem("wiki_user_agent");
+  document.getElementById("ua-settings").classList.remove("visible");
+  refetch();
+}
+function toggleUASettings() {
+  var panel = document.getElementById("ua-settings");
+  panel.classList.toggle("visible");
+  if (panel.classList.contains("visible")) {
+    document.getElementById("ua-input").value = loadUA();
+  }
+}
+
+// ─── About ──────────────────────────────────────────────────
+
+function toggleAbout() {
+  var ov = document.getElementById("about-overlay");
+  document.getElementById("about-ua").textContent =
+    document.getElementById("ua-input").value || loadUA() || "(default)";
+  var colors = document.getElementById("about-colors");
+  if (!colors.hasChildNodes()) {
+    CLUSTER_ORDER.forEach(function(c) {
+      var span = document.createElement("span");
+      var swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = getClusterColor(c);
+      span.appendChild(swatch);
+      span.appendChild(document.createTextNode(" " + c));
+      colors.appendChild(span);
+    });
+  }
+  ov.classList.toggle("visible");
+}
+
+// ─── Refresh ────────────────────────────────────────────────
+
+async function hardRefresh() {
+  if (currentMode === "custom") {
+    buildCustomList();
+    return;
+  }
+  var url = buildUrl();
+  if (!url) return;
+  url += (url.includes("?") ? "&" : "?") + "refresh=1";
+  showProgress("Clearing cache and rebuilding...");
+  try {
+    var data = await fetchGraph(url);
+    renderGraph(data);
+    applyFilters();
+  } catch(e) {
+    hideProgress();
+    document.getElementById("loading-indicator").textContent = "Refresh failed";
+  }
+}
+
+// ─── Utilities ──────────────────────────────────────────────
+
+function fmtViews(v) {
+  if (!v) return "";
+  if (v >= 1000000) return (v / 1000000).toFixed(1) + "M";
+  if (v >= 1000) return (v / 1000).toFixed(1) + "K";
+  return v.toString();
+}
+function truncate(s, n) { return s.length > n ? s.slice(0, n-1) + "\u2026" : s; }
+function escHtml(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+// ─── Init ───────────────────────────────────────────────────
+
+(function() {
+  // Set default date to today
+  var today = formatDate(new Date());
+  document.getElementById("date-picker").value = today;
+
+  setupOnce();
+  var params = new URLSearchParams(window.location.search);
+
+  // Check for custom mode
+  if (params.get("mode") === "custom") {
+    switchMode("custom");
+  }
+
+  applyPreGraphParams(params);
+  initIgnoreList();
+
+  if (params.has("date")) {
+    document.getElementById("date-picker").value = params.get("date");
+    onDateChange();
+  } else {
+    loadLatestDate();
+  }
+})();
+</script>
+</body>
+</html>
