@@ -86,6 +86,9 @@ cat architecture-articles.txt | python -m wikigraph --stdin -o architecture.json
 python view_graph.py architecture.json
 ```
 
+> Tip: Or open it in the **[web app](#6-run-the-web-server)** for the full interactive experience.
+```
+
 Or from Python:
 
 ```python
@@ -113,13 +116,9 @@ python view_graph.py --date 2026 5 29
 python view_graph.py
 ```
 
-Opens your browser with a D3.js force-directed graph. Features:
-- **Click** any node → side panel with details, image, connected articles
-- **Hover** → highlights connected subgraph + tooltip
-- **Search** → filter nodes by name in real-time
-- **Helpers toggle** → show/hide category and entity helper nodes
-- **Spacing slider** → adjust force repulsion to spread or tighten nodes
-- **Drag** nodes, **zoom/pan**, tooltips. Zero extra dependencies.
+Opens your browser with a D3.js force-directed graph. Same core features
+as the web server (section 6) but for pre-built JSON files, with no
+server-side build step needed. Zero extra dependencies.
 
 #### Use with other tools
 
@@ -149,7 +148,10 @@ python server.py
 python server.py 8080
 ```
 
-Open **http://localhost:8000** in your browser.
+Open **http://localhost:8000** in your browser. The web app is served
+from `index.html` — a full D3.js interface that improves on the
+static `view_graph.py` viewer with interactive builds, Play mode,
+URL bookmarking, and more.
 
 #### Top Articles mode
 
