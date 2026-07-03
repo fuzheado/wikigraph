@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="download_button.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>wikigraph — Wikipedia Connection Graphs</title>
@@ -295,6 +296,7 @@ svg { width: 100%; height: 100%; }
     <button class="btn-icon" onclick="cyclePlaybackOrder()" id="order-btn" title="Playback order">&#128290; Rank</button>
     <div class="sep"></div>
     <button class="btn-icon" onclick="hardRefresh()" title="Clear cache and rebuild">&#10227; Refresh</button>
+<button class="btn-icon" onclick="downloadCytoscape()" title="Download Cytoscape JSON">⬇ Cytoscape</button>
     <button class="btn-icon" onclick="toggleAbout()" title="About">About</button>
     <div class="stats" id="stats"></div>
     <span class="failed-warning" id="failed-warning" onclick="toggleFailedDetail()" style="display:none">&#9888;</span>
@@ -906,6 +908,8 @@ function renderGraph(data) {
   svg.call(zoom);
 
   var nodes = data.nodes.map(function(d) { return Object.assign({}, d); });
+    // expose the D3 node array globally for the download helper
+    window._d3_nodes = nodes;
   var links = data.links.map(function(d) { return Object.assign({}, d); });
   nodeMap = {};
   nodes.forEach(function(n) { nodeMap[n.id] = n; });

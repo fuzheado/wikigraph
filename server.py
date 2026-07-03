@@ -101,6 +101,52 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        import json, cgi
+        parsed = urlparse(self.path)
+
+        if parsed.path == "/api/graph-from-cytoscape":
+            # Expect multipart/form-data with a file field named "file"
+            ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
+            if ctype != 'multipart/form-data':
+                self.send_error(400, "Expected multipart/form-data")
+                return
+            pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
+            fields = cgi.parse_multipart(self.rfile, pdict)
+            if "file" not in fields:
+                self.send_error(400, "No file uploaded")
+                return
+            try:
+                cyt_data = json.loads(fields["file"][0])
+            except Exception as e:
+                self.send_error(400, f"Invalid JSON: {e}")
+                return
+
+            # Convert to internal format then stream it back as NDJSON (like other builds)
+            from wikigraph.graph.serializers import convert_from_cytoscape
+            output = convert_from_cytoscape(cyt_data)
+            # Bypass callbacks – just stream the result
+            self._stream_graph(lambda *a, **k: output, {})
+            return
+
+        # Existing POST handling for /api/graph-from-list
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/graph-from-list":
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_length)
+                data = json.loads(body)
+                titles = data.get("titles", [])
+                if not titles or not isinstance(titles, list):
+                    self.send_error(400, "Expected JSON with 'titles' array")
+                    return
+            except (ValueError, KeyError, json.JSONDecodeError):
+                self.send_error(400, "Invalid JSON body")
+                return
+
+            self._stream_graph(build_graph_from_list, titles)
+            return
+
+        self.send_error(404)
         parsed = urlparse(self.path)
 
         if parsed.path == "/api/graph-from-list":

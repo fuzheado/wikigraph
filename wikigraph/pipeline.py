@@ -1,4 +1,5 @@
 """Pipeline orchestration — the main build_graph() function.
+from .graph.serializers import serialize_graph, convert_to_cytoscape, convert_from_cytoscape
 
 Coordinates the full pipeline: fetch → enrich → analyze → build → export.
 Can be called programmatically (from server.py) or via CLI.
@@ -6,6 +7,7 @@ Can be called programmatically (from server.py) or via CLI.
 import json
 import sys
 import asyncio
+from .graph.serializers import serialize_graph, convert_to_cytoscape, convert_from_cytoscape
 
 import networkx as nx
 
@@ -21,7 +23,7 @@ from .graph.builder import (
     add_category_helpers,
     add_entity_helpers,
 )
-from .graph.serializers import serialize_graph
+from .graph.serializers import serialize_graph, convert_to_cytoscape
 
 
 def build_graph(year, month, day, min_entity_share=3, verbose=True,
@@ -306,6 +308,13 @@ def latest_available_date():
 
 
 def main():
+    """CLI entry point for building a graph and saving it.
+
+    Recognises an additional optional flag ``--export-format`` which can be
+    ``d3`` (default) or ``cytoscape``. When ``cytoscape`` is selected the output
+    JSON follows the Cytoscape schema (``meta`` + ``elements`` with ``nodes`` and
+    ``edges``). The flag works for all three modes (date, --articles, --stdin).
+    """
     """CLI entry point: builds graph and saves to a file.
 
     Usage:
@@ -315,8 +324,22 @@ def main():
     """
     out_file = "graph_data.json"
     min_entity_share = 3
+    export_format = "d3"  # default output format
+    # Detect optional export format flag
+    if "--export-format" in sys.argv:
+        idx = sys.argv.index("--export-format")
+        if idx + 1 < len(sys.argv):
+            export_format = sys.argv[idx + 1].lower()
+        else:
+            print("Missing value for --export-format; using default 'd3'.")
+        # Remove flag and its value from argv to simplify later parsing
+        sys.argv.pop(idx)
+        if idx < len(sys.argv):
+            sys.argv.pop(idx)
+
 
     # --stdin mode: read one article title per line from stdin
+    # (the export format flag has already been stripped from sys.argv)
     if "--stdin" in sys.argv:
         titles = [line.strip() for line in sys.stdin if line.strip()]
         for i, arg in enumerate(sys.argv):
@@ -344,10 +367,14 @@ def main():
         output = build_graph(year, month, day, min_entity_share)
     else:
         print("Usage:")
-        print("  python -m wikigraph.pipeline 2026 5 29 [-o output.json]")
-        print("  python -m wikigraph.pipeline --articles 'Article A,Article B' [-o output.json]")
-        print("  cat articles.txt | python -m wikigraph.pipeline --stdin [-o output.json]")
+        print("  python -m wikigraph.pipeline 2026 5 29 [-o output.json] [--export-format d3|cytoscape]")
+        print("  python -m wikigraph.pipeline --articles 'Article A,Article B' [-o output.json] [--export-format d3|cytoscape]")
+        print("  cat articles.txt | python -m wikigraph.pipeline --stdin [-o output.json] [--export-format d3|cytoscape]")
         sys.exit(1)
+
+    # Apply export format conversion if requested
+    if export_format == "cytoscape":
+        output = convert_to_cytoscape(output)
 
     with open(out_file, "w") as f:
         json.dump(output, f, indent=2)
