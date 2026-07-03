@@ -11,11 +11,11 @@ from .graph.serializers import serialize_graph, convert_to_cytoscape, convert_fr
 
 import networkx as nx
 
-from .config import _is_valid_ua, HEADERS, MAX_CONCURRENT
+from .config import _is_valid_ua, HEADERS, MAX_CONCURRENT, get_mw_api
 from .sources.hatnote import fetch_top100
 from .enricher.mw_api import fetch_all_metadata
 from .enricher.wikidata_images import fetch_wikidata_images_batch
-from .analyzer.categories import is_meaningful_category
+from .analyzer.categories import is_meaningful_category, filter_statistical
 from .analyzer.ner import extract_entities
 from .graph.builder import (
     build_graph_nodes,
@@ -27,13 +27,15 @@ from .graph.serializers import serialize_graph, convert_to_cytoscape
 
 
 def build_graph(year, month, day, min_entity_share=3, verbose=True,
-                ignore_articles=None, progress_callback=None, user_agent=None):
+                ignore_articles=None, progress_callback=None, user_agent=None,
+                wiki="en"):
     """Run the full pipeline: fetch → enrich → analyze → build → export.
 
     Returns the graph data dict with meta, nodes, and links keys.
     Can be called programmatically from server.py or as a CLI script.
     Accepts an optional progress_callback(msg) for streaming status updates.
     Accepts an optional user_agent override for MW API requests.
+    Accepts an optional wiki language code (e.g. 'de', 'fr') for multi-language.
     """
     def log(msg):
         if verbose:
@@ -68,7 +70,8 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
     log("Fetching article metadata (async, 5 concurrent)...")
     metadata = asyncio.run(fetch_all_metadata(
         titles, max_concurrent=MAX_CONCURRENT,
-        progress_callback=progress_callback or log, headers=headers))
+        progress_callback=progress_callback or log, headers=headers,
+        api_url=get_mw_api(wiki)))
     log(f"Got metadata for {len(metadata)} articles")
 
     failed_articles = []
@@ -97,6 +100,13 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
     else:
         for a in articles:
             a["wikidata_image_url"] = ""
+
+    # Apply statistical category filter (language-agnostic maintenance filter)
+    stat_exclude = filter_statistical(articles)
+    if stat_exclude:
+        for a in articles:
+            a["categories"] = [c for c in a.get("categories", []) if c not in stat_exclude]
+        log(f"  Statistical filter removed {len(stat_exclude)} universal categories")
 
     meaningful_cat_count = sum(len(a["categories"]) for a in articles)
     link_count_total = sum(len(a["links"]) for a in articles)
@@ -154,7 +164,8 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
 
 
 def build_graph_from_list(titles, min_entity_share=3, verbose=True,
-                          progress_callback=None, user_agent=None):
+                          progress_callback=None, user_agent=None,
+                          wiki="en"):
     """Build a connection graph from an arbitrary list of Wikipedia article titles.
 
     Unlike build_graph() which fetches the Hatnote daily top 100, this accepts
@@ -164,6 +175,7 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
     Args:
         titles: list of article titles (spaces or underscores OK, e.g.
                 ["Quantum computing", "Qubit"] or ["Quantum_computing", "Qubit"]).
+        wiki: language code for the Wikipedia edition (default "en").
         min_entity_share: minimum number of articles sharing an entity for it
                          to become a helper node (default 3).
         verbose: print progress to stdout.
@@ -204,7 +216,8 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
     log("Fetching article metadata (async)...")
     metadata = asyncio.run(fetch_all_metadata(
         article_ids_list, max_concurrent=MAX_CONCURRENT,
-        progress_callback=progress_callback or log, headers=headers))
+        progress_callback=progress_callback or log, headers=headers,
+        api_url=get_mw_api(wiki)))
     log(f"Got metadata for {len(metadata)} articles")
 
     failed_articles = []
@@ -246,7 +259,7 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
         t = (a.get("summary", "") + " " + a.get("extract", "")).strip()
         if t:
             texts[a["id"]] = t
-    entity_map, _ = extract_entities(texts)
+    entity_map, _ = extract_entities(texts, wiki=wiki)
     log(f"Found {len(entity_map)} unique named entities")
 
     log("Building graph...")

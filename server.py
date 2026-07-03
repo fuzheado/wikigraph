@@ -79,6 +79,7 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
                 ignore_raw = params.get("ignore", [None])[0]
                 ignore_list = ignore_raw.split(",") if ignore_raw else None
                 user_agent = params.get("user_agent", [None])[0]
+                wiki = params.get("wiki", ["en"])[0]
                 refresh = params.get("refresh", ["0"])[0] == "1"
             except (ValueError, KeyError):
                 self.send_error(400, "Invalid parameters")
@@ -94,6 +95,7 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
                 min_entity_share=min_entity,
                 ignore_articles=ignore_list,
                 user_agent=user_agent,
+                wiki=wiki,
             )
             return
 
@@ -180,6 +182,7 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
                 body = self.rfile.read(content_length)
                 data = json.loads(body)
                 titles = data.get("titles", [])
+                wiki = data.get("wiki", "en")
                 if not titles or not isinstance(titles, list):
                     self.send_error(400, "Expected JSON with 'titles' array")
                     return
@@ -187,7 +190,7 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
                 self.send_error(400, "Invalid JSON body")
                 return
 
-            self._stream_graph(build_graph_from_list, titles)
+            self._stream_graph(build_graph_from_list, titles, wiki=wiki)
             return
 
         self.send_error(404)

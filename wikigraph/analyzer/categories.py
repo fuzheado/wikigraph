@@ -87,3 +87,23 @@ def is_meaningful_category(cat):
         if re.search(p, cat, re.IGNORECASE):
             return False
     return True
+
+
+def filter_statistical(articles, max_share=0.6):
+    """Filter out categories shared by more than max_share of all articles.
+
+    Language-agnostic fallback for maintenance category detection.
+    Maintenance categories ("Articles with short description", "Living people",
+    etc.) tend to appear on a majority of articles regardless of language.
+
+    Returns a set of category names to exclude.
+    """
+    from collections import Counter
+    total = len(articles)
+    if total == 0:
+        return set()
+    cat_counts = Counter()
+    for a in articles:
+        for cat in a.get("categories", []):
+            cat_counts[cat] += 1
+    return {cat for cat, count in cat_counts.items() if count > total * max_share}

@@ -12,7 +12,7 @@ from ..config import HEADERS, MAX_CONCURRENT, MW_API, MW_CACHE_TTL
 from ..cache import _cache_get, _cache_set
 
 
-async def fetch_single_metadata(client, title, sem):
+async def fetch_single_metadata(client, title, sem, api_url=MW_API):
     """Fetch categories, outgoing links (ns=0 only), and intro extract for one article.
 
     Results are cached to disk (7-day TTL) to avoid redundant API calls.
@@ -39,7 +39,7 @@ async def fetch_single_metadata(client, title, sem):
             "pithumbsize": 300,
             "ppprop": "wikibase_item",
         }
-        url = f"{MW_API}?{urlencode(params)}"
+        url = f"{api_url}?{urlencode(params)}"
         for attempt in range(3):
             try:
                 resp = await client.get(url, timeout=15.0)
@@ -78,7 +78,8 @@ async def fetch_single_metadata(client, title, sem):
         return title, {"categories": [], "links": [], "extract": "", "page_image_url": "", "wikibase_item": ""}
 
 
-async def fetch_all_metadata(titles, max_concurrent=None, progress_callback=None, headers=None):
+async def fetch_all_metadata(titles, max_concurrent=None, progress_callback=None,
+                           headers=None, api_url=None):
     """Fetch metadata for all articles concurrently with a concurrency limit.
 
     Reports progress via progress_callback after each article completes.
@@ -89,10 +90,12 @@ async def fetch_all_metadata(titles, max_concurrent=None, progress_callback=None
         max_concurrent = MAX_CONCURRENT
     if headers is None:
         headers = HEADERS
+    if api_url is None:
+        api_url = MW_API
     sem = asyncio.Semaphore(max_concurrent)
     total = len(titles)
     async with httpx.AsyncClient(headers=HEADERS) as client:
-        tasks = [fetch_single_metadata(client, t, sem) for t in titles]
+        tasks = [fetch_single_metadata(client, t, sem, api_url=api_url) for t in titles]
         results = {}
         for i, coro in enumerate(asyncio.as_completed(tasks)):
             title, meta = await coro

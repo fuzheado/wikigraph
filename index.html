@@ -39,6 +39,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 #controls input[type=date]:focus { border-color: #6c5ce7; }
 #controls .loading { font-size: 11px; color: #fdcb6e; margin-left: 4px; }
 #controls .stats { font-size: 11px; color: #555; margin-left: auto; white-space: nowrap; }
+#wiki-select {
+  background: #2a2a4a; border: 1px solid #444; color: #ccc;
+  padding: 2px 4px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer;
+}
+#wiki-select:focus { border-color: #6c5ce7; }
 
 .date-nav {
   background: #2a2a4a; border: 1px solid #444; color: #999; padding: 2px 6px;
@@ -382,6 +387,22 @@ svg { width: 100%; height: 100%; }
     <span id="custom-controls" style="display:none">
       <span id="article-count" class="ctrl" style="font-size:11px;color:#888"></span>
     </span>
+
+    <div class="sep"></div>
+    <select id="wiki-select" title="Wikipedia language edition">
+      <option value="ar">العربية</option>
+      <option value="de">Deutsch</option>
+      <option value="en" selected>English</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="it">Italiano</option>
+      <option value="ja">日本語</option>
+      <option value="nl">Nederlands</option>
+      <option value="pl">Polski</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="zh">中文</option>
+    </select>
 
     <div class="sep"></div>
     <label>&#128269; <input type="text" id="search" placeholder="Search..."></label>
@@ -746,6 +767,12 @@ function setupOnce() {
     }
   });
   document.getElementById("date-picker").addEventListener("blur", onDateChange);
+
+  // Wiki language selector: rebuild graph on change
+  document.getElementById("wiki-select").addEventListener("change", function() {
+    syncUrl();
+    refetch();
+  });
   // ResizeObserver for custom panel
   if (window.ResizeObserver) {
     new ResizeObserver(() => updateGraphLayout()).observe(document.getElementById("custom-panel"));
@@ -1020,7 +1047,8 @@ function buildUrl() {
   var params = new URLSearchParams({
     year: parts[0],
     month: String(parseInt(parts[1])),
-    day: String(parseInt(parts[2]))
+    day: String(parseInt(parts[2])),
+    wiki: document.getElementById("wiki-select").value
   });
   var ua = loadUA();
   if (ua) params.set("user_agent", ua);
@@ -1067,10 +1095,11 @@ async function fetchGraph(url) {
 
 async function loadGraphFromList(titles) {
   showProgress("Starting...");
+  var wiki = document.getElementById("wiki-select").value;
   var resp = await fetch("/api/graph-from-list", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ titles: titles })
+    body: JSON.stringify({ titles: titles, wiki: wiki })
   });
   if (!resp.ok) throw new Error("HTTP " + resp.status);
   var reader = resp.body.getReader();

@@ -6,7 +6,7 @@ Results are cached for 24 hours.
 import time
 import httpx
 
-from ..config import HEADERS, HATNOTE_URL, HATNOTE_CACHE_TTL
+from ..config import HEADERS, HATNOTE_CACHE_TTL, get_hatnote_url
 from ..cache import _cache_get, _cache_set
 
 
@@ -36,19 +36,20 @@ def fetch_json(url, max_retries=2):
                 raise
 
 
-def fetch_top100(year, month, day):
+def fetch_top100(year, month, day, wiki="en"):
     """Fetch the top 100 list from the Hatnote API (cached for 24h).
 
     Filters out Special:, Wikipedia:, Talk:, and other non-article pages.
     Returns a list of dicts with id, title, rank, views, summary, image_url, url.
     Article IDs use underscores (matching Wikipedia URL convention).
+    Accepts an optional wiki language code for multi-language support.
     """
-    cache_key = f"{year}-{month}-{day}.json"
+    cache_key = f"{wiki}-{year}-{month}-{day}.json"
     cached = _cache_get("hatnote", cache_key, HATNOTE_CACHE_TTL)
     if cached is not None:
         return cached
 
-    url = HATNOTE_URL.format(year=year, month=month, day=day)
+    url = get_hatnote_url(year, month, day, wiki)
     try:
         data = fetch_json(url)
     except httpx.HTTPStatusError as e:

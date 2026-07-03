@@ -16,20 +16,26 @@ def normalize_entity(name):
     return n
 
 
-def extract_entities(texts):
+def extract_entities(texts, wiki="en"):
     """Run spaCy NER on article text and return deduplicated entity map.
 
-    Processes text through en_core_web_sm, collecting PERSON, ORG, GPE,
-    EVENT, NORP, PRODUCT, and WORK_OF_ART entities. Deduplicates variants
-    (e.g., "the UFC" vs "UFC") by normalizing and keeping the longest name.
+    Processes text through a language-appropriate spaCy model, collecting
+    PERSON, ORG, GPE, EVENT, NORP, PRODUCT, and WORK_OF_ART entities.
+    Deduplicates variants (e.g., "the UFC" vs "UFC") by normalizing
+    and keeping the longest name.
+
+    Accepts a wiki language code to select the right spaCy model.
+    Falls back to the multilingual model for uncovered languages.
 
     Returns (entity_map, final_map) where entity_map is {name: [article_ids]}.
     """
+    from ..config import get_spacy_model
+    model_name = get_spacy_model(wiki)
     try:
         import spacy
-        nlp = spacy.load("en_core_web_sm", disable=["parser", "lemmatizer"])
+        nlp = spacy.load(model_name, disable=["parser", "lemmatizer"])
     except Exception as e:
-        print(f"spaCy not available: {e}")
+        print(f"spaCy model '{model_name}' not available: {e}")
         return {}, {}
 
     raw_map = collections.defaultdict(list)
