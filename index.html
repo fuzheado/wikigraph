@@ -443,7 +443,7 @@ svg { width: 100%; height: 100%; }
     <label><input type="checkbox" id="toggle-labels"> Labels</label>
     <label><input type="checkbox" id="toggle-legend"> Legend</label>
     <div class="sep"></div>
-    <button class="btn-icon" onclick="cycleImageSource()" id="img-src-btn" title="Image source (click to cycle)">&#128247; Article</button>
+    <button class="btn-icon" onclick="cycleImageSource()" id="img-src-btn" title="Image source (click to cycle)">📷 Article</button>
     <button class="btn-icon" onclick="togglePlayback()" id="playback-btn" title="Auto-advance through articles">&#9654; Play</button>
     <button class="btn-icon" onclick="cyclePlaybackSpeed()" id="speed-btn" title="Time per node (click to cycle)">3s</button>
     <button class="btn-icon" onclick="cyclePlaybackZoom()" id="zoom-btn" title="Playback zoom level">&#128269; 1x</button>
@@ -960,7 +960,7 @@ function applyPreGraphParams(params) {
   }
   if (params.has("image")) {
     localStorage.setItem("wiki_image_source", params.get("image"));
-    document.getElementById("img-src-btn").textContent = "&#128247; " + (IMG_LABELS[params.get("image")] || "Article");
+    document.getElementById("img-src-btn").textContent = "📷 " + (IMG_LABELS[params.get("image")] || "Article");
   }
   if (params.has("order")) {
     localStorage.setItem("wiki_playback_order", params.get("order"));
@@ -1315,7 +1315,7 @@ function cycleImageSource() {
     }
   }
   localStorage.setItem("wiki_image_source", next);
-  document.getElementById("img-src-btn").textContent = "&#128247; " + IMG_LABELS[next];
+  document.getElementById("img-src-btn").textContent = "📷 " + IMG_LABELS[next];
   syncUrl();
   // Refresh node images if graph is loaded
   if (graphData) refreshNodeImages();
@@ -1979,7 +1979,7 @@ function removeRunParam() {
 
   // Initialize image source button text from saved preference
   var initImgSrc = loadImageSource();
-  document.getElementById("img-src-btn").textContent = "&#128247; " + IMG_LABELS[initImgSrc];
+  document.getElementById("img-src-btn").textContent = "📷 " + IMG_LABELS[initImgSrc];
 
   setupOnce();
   var params = new URLSearchParams(window.location.search);
