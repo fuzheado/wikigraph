@@ -677,9 +677,28 @@ const CLUSTER_ORDER = ["Sports","Music","Film & TV","Politics","Technology",
   "Science & Nature","History","Geography","Death & Crime","Business","People","Other"];
 
 const FILTER_GROUPS = {
-  "Social": ["Instagram", "YouTube", "TikTok", "Twitter", "Facebook", "Snapchat", "LinkedIn", "Reddit", "WhatsApp", "Telegram", "Discord", "Pinterest", "ChatGPT"],
+  "Social": "__qid__social",
   "Countries": "__cluster__Geography",
 };
+
+// QID sets for language-agnostic filtering (Wikidata item IDs)
+const SOCIAL_QIDS = new Set([
+  "Q209330",    // Instagram
+  "Q9366",      // YouTube
+  "Q48955211",  // TikTok
+  "Q918",       // Twitter / X
+  "Q355",       // Facebook
+  "Q333618",    // Snapchat
+  "Q213660",    // LinkedIn
+  "Q1136",      // Reddit
+  "Q1049517",   // WhatsApp
+  "Q15616276",  // Telegram
+  "Q22907849",  // Discord
+  "Q255381",    // Pinterest
+  "Q116251322", // ChatGPT
+  "Q1221156",   // Threads
+  "Q120506472", // Bluesky
+]);
 
 const DEFAULT_IGNORE = [".xxx", ".xyz", "XXX (Kendrick Lamar song)", "XXX", "XXX (film series)"];
 
@@ -1487,6 +1506,10 @@ function applyFilters() {
     if (patterns === "__cluster__Geography") {
       graphData.nodes.forEach(function(n) {
         if (n.type === "article" && n.cluster === "Geography") hiddenIds.add(n.id);
+      });
+    } else if (patterns === "__qid__social") {
+      graphData.nodes.forEach(function(n) {
+        if (n.type === "article" && SOCIAL_QIDS.has(n.wikibase_item)) hiddenIds.add(n.id);
       });
     } else {
       patterns.forEach(function(p) {
