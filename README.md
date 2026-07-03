@@ -137,6 +137,8 @@ print(f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
 ### 6. Run the web server
 
+> **Note**: A neutral startup modal has been added to let users choose which mode to load. However, a bug remains where the top‑100 graph still auto‑loads on page load. This will be fixed in a future release.
+
 The web server serves the full web app from `index.html` with a polished
 D3.js interface and two modes for building graphs:
 
