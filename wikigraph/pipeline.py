@@ -214,6 +214,8 @@ def build_graph_from_list(titles, min_entity_share=3, verbose=True,
         a["categories"] = [c for c in all_cats if is_meaningful_category(c)]
         a["links"] = meta.get("links", [])
         a["extract"] = meta.get("extract", "")
+        if not a["summary"] and a["extract"]:
+            a["summary"] = a["extract"]
         a["page_image_url"] = meta.get("page_image_url", "")
         a["wikibase_item"] = meta.get("wikibase_item", "")
         if not all_cats and not a["links"] and len(a["extract"]) < 50:

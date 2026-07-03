@@ -97,15 +97,61 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
             )
             return
 
+        if parsed.path == "/api/pagepile":
+            params = parse_qs(parsed.query)
+            pile_id = params.get("id", [None])[0]
+            if not pile_id:
+                self.send_error(400, "Missing 'id' parameter")
+                return
+            try:
+                from wikigraph.sources.pagepile import fetch_pagepile
+                result = fetch_pagepile(int(pile_id))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
+            except ValueError as e:
+                self.send_error(404, str(e))
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
+        if parsed.path == "/api/category":
+            params = parse_qs(parsed.query)
+            name = params.get("name", [None])[0]
+            depth = int(params.get("depth", ["0"])[0])
+            if not name:
+                self.send_error(400, "Missing 'name' parameter")
+                return
+            try:
+                from wikigraph.sources.category import fetch_category
+                result = fetch_category(name, depth)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
+            except ValueError as e:
+                self.send_error(404, str(e))
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
         # Serve static files (index.html, etc.)
         return super().do_GET()
 
     def do_POST(self):
-        import json, cgi
+        import json
         parsed = urlparse(self.path)
 
         if parsed.path == "/api/graph-from-cytoscape":
             # Expect multipart/form-data with a file field named "file"
+            try:
+                import cgi
+            except ImportError:
+                self.send_error(501, "Cytoscape upload requires Python < 3.13")
+                return
             ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
             if ctype != 'multipart/form-data':
                 self.send_error(400, "Expected multipart/form-data")
@@ -127,27 +173,6 @@ class GraphAPIHandler(SimpleHTTPRequestHandler):
             # Bypass callbacks – just stream the result
             self._stream_graph(lambda *a, **k: output, {})
             return
-
-        # Existing POST handling for /api/graph-from-list
-        parsed = urlparse(self.path)
-        if parsed.path == "/api/graph-from-list":
-            try:
-                content_length = int(self.headers.get("Content-Length", 0))
-                body = self.rfile.read(content_length)
-                data = json.loads(body)
-                titles = data.get("titles", [])
-                if not titles or not isinstance(titles, list):
-                    self.send_error(400, "Expected JSON with 'titles' array")
-                    return
-            except (ValueError, KeyError, json.JSONDecodeError):
-                self.send_error(400, "Invalid JSON body")
-                return
-
-            self._stream_graph(build_graph_from_list, titles)
-            return
-
-        self.send_error(404)
-        parsed = urlparse(self.path)
 
         if parsed.path == "/api/graph-from-list":
             try:

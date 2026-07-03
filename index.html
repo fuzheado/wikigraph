@@ -190,6 +190,29 @@ svg { width: 100%; height: 100%; }
 #legend .helper-swatch { width: 10px; height: 10px; border-radius: 50%;
     border: 1px dashed #666; background: #b0b0b0; opacity: 0.6; flex-shrink: 0; }
 
+#startup-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 500; display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.8);
+}
+#startup-overlay.visible { display: flex; }
+#startup-box {
+  background: #1e1e36; border: 1px solid #555; border-radius: 10px;
+  padding: 36px 40px; text-align: center; max-width: 440px;
+}
+#startup-box h2 { font-size: 22px; color: #fff; margin-bottom: 6px; }
+#startup-box .subtitle { font-size: 13px; color: #888; margin-bottom: 28px; }
+#startup-box .startup-buttons { display: flex; gap: 14px; justify-content: center; }
+#startup-box .startup-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: #2a2a4a; border: 1px solid #444; border-radius: 8px;
+  padding: 20px 24px; cursor: pointer; transition: all 0.2s;
+  color: #ccc; font-size: 13px; font-weight: 600; min-width: 160px;
+}
+#startup-box .startup-btn:hover { border-color: #6c5ce7; background: #2a2a4e; color: #fff; }
+#startup-box .startup-btn .icon { font-size: 28px; }
+#startup-box .startup-btn .desc { font-size: 11px; font-weight: 400; color: #888; }
+
 #progress-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   z-index: 300; display: none; align-items: center; justify-content: center;
@@ -208,24 +231,83 @@ svg { width: 100%; height: 100%; }
 @keyframes spin { to { transform: rotate(360deg); } }
 #progress-message { font-size: 13px; color: #ccc; }
 #progress-step { font-size: 11px; color: #666; margin-top: 8px; }
+#progress-box.error { border-color: #e74c3c; }
+#progress-box.error .progress-spinner { display: none; }
+#progress-box.error #progress-message { color: #e74c3c; }
 
-/* Custom list panel */
+/* Custom list panel — right-side drawer */
 #custom-panel {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
-  background: rgba(26,26,46,0.98); backdrop-filter: blur(10px);
-  border-bottom: 1px solid #333; padding: 12px 16px;
-  display: none; gap: 10px; align-items: flex-start;
+  position: fixed; top: 78px; right: -420px; width: 400px; bottom: 0;
+  z-index: 99; transition: right 0.3s ease;
+  background: rgba(30,30,50,0.97); backdrop-filter: blur(10px);
+  border-left: 1px solid #444;
+  display: flex; flex-direction: column; padding: 16px;
 }
-#custom-panel.open { display: flex; }
+#custom-panel.open { right: 0; }
+#custom-panel .panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+#custom-panel .panel-header h3 { font-size: 14px; color: #ccc; margin: 0; }
+#custom-panel .close-btn {
+  background: none; border: none; color: #888; font-size: 18px; cursor: pointer;
+  padding: 0 2px; line-height: 1;
+}
+#custom-panel .close-btn:hover { color: #fff; }
 #custom-panel textarea {
   flex: 1; background: #2a2a4a; border: 1px solid #444; color: #e0e0e0;
-  border-radius: 4px; padding: 8px; font-size: 12px; font-family: 'SF Mono', Monaco, monospace;
-  resize: vertical; min-height: 100px; max-height: 250px; outline: none;
+  border-radius: 4px; padding: 10px; font-size: 12px; font-family: 'SF Mono', Monaco, monospace;
+  resize: none; outline: none; margin-bottom: 12px; min-height: 0;
 }
 #custom-panel textarea:focus { border-color: #6c5ce7; }
-#custom-panel .input-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-#custom-panel .input-actions .hint { font-size: 10px; color: #666; line-height: 1.4; }
-#custom-panel .input-actions .count { font-size: 11px; color: #888; }
+#custom-panel .panel-footer {
+  display: flex; flex-direction: column; gap: 6px;
+}
+#custom-panel .panel-footer .info-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: #888;
+}
+#custom-panel .panel-footer .warning {
+  font-size: 10px; color: #f39c12; line-height: 1.4;
+  display: none;
+}
+#custom-panel .panel-footer .warning.visible { display: block; }
+#custom-panel .btn-primary { align-self: stretch; }
+#custom-panel .pagepile-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+}
+#custom-panel .pagepile-row input {
+  flex: 1; background: #2a2a4a; border: 1px solid #444; color: #e0e0e0;
+  padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none;
+  min-width: 0;
+}
+#custom-panel .pagepile-row input:focus { border-color: #6c5ce7; }
+#custom-panel .pagepile-row .btn-icon {
+  padding: 4px 10px; font-size: 11px; white-space: nowrap;
+}
+#custom-panel .pagepile-status { font-size: 10px; color: #888; white-space: nowrap; }
+#custom-panel .pagepile-status.loading { color: #fdcb6e; }
+#custom-panel .pagepile-status.error { color: #e74c3c; }
+#custom-panel .category-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+}
+#custom-panel .category-row input {
+  flex: 1; background: #2a2a4a; border: 1px solid #444; color: #e0e0e0;
+  padding: 4px 8px; border-radius: 4px; font-size: 11px; outline: none;
+  min-width: 0;
+}
+#custom-panel .category-row input:focus { border-color: #6c5ce7; }
+#custom-panel .category-row select {
+  background: #2a2a4a; border: 1px solid #444; color: #e0e0e0;
+  padding: 4px 4px; border-radius: 4px; font-size: 10px; outline: none; cursor: pointer;
+}
+#custom-panel .category-row select:focus { border-color: #6c5ce7; }
+#custom-panel .category-row .btn-icon {
+  padding: 4px 10px; font-size: 11px; white-space: nowrap;
+}
+#custom-panel .cat-status { font-size: 10px; color: #888; white-space: nowrap; }
+#custom-panel .cat-status.loading { color: #fdcb6e; }
+#custom-panel .cat-status.error { color: #e74c3c; }
 
 #about-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -248,6 +330,31 @@ svg { width: 100%; height: 100%; }
 #about-box .swatch-row span { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #bbb; }
 #about-box .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 #about-box .line-swatch { width: 18px; height: 2px; display: inline-block; }
+
+/* Share overlay */
+#share-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 450; display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.6);
+}
+#share-overlay.visible { display: flex; }
+#share-box {
+  background: #1e1e36; border: 1px solid #555; border-radius: 10px;
+  padding: 24px 28px; max-width: 520px; width: 90%; position: relative;
+}
+#share-box h3 { font-size: 15px; color: #fff; margin-bottom: 12px; }
+#share-box .url-display {
+  background: #2a2a4a; border: 1px solid #444; border-radius: 6px;
+  padding: 10px 12px; font-size: 12px; font-family: 'SF Mono', Monaco, monospace;
+  color: #6c5ce7; word-break: break-all; line-height: 1.5; margin-bottom: 12px;
+  max-height: 120px; overflow-y: auto;
+}
+#share-box .share-actions { display: flex; gap: 8px; align-items: center; }
+#share-box .share-actions .btn-primary { padding: 6px 16px; font-size: 12px; }
+#share-box .copied-msg { font-size: 11px; color: #00b894; display: none; }
+#share-box .copied-msg.visible { display: inline; }
+#share-box .close { position: absolute; top: 10px; right: 14px; cursor: pointer; font-size: 18px; color: #888; }
+#share-box .close:hover { color: #fff; }
 </style>
 </head>
 <body>
@@ -298,6 +405,7 @@ svg { width: 100%; height: 100%; }
     <button class="btn-icon" onclick="hardRefresh()" title="Clear cache and rebuild">&#10227; Refresh</button>
 <button class="btn-icon" onclick="downloadCytoscape()" title="Download Cytoscape JSON">⬇ Cytoscape</button>
     <button class="btn-icon" onclick="toggleAbout()" title="About">About</button>
+    <button class="btn-icon" onclick="toggleShare()" title="Share this graph">&#128279; Share</button>
     <div class="stats" id="stats"></div>
     <span class="failed-warning" id="failed-warning" onclick="toggleFailedDetail()" style="display:none">&#9888;</span>
     <div class="failed-detail" id="failed-detail">
@@ -329,13 +437,44 @@ svg { width: 100%; height: 100%; }
       <button class="hide-btn" data-group="Countries">Countries</button>
     </div>
     <div style="margin-left:auto;display:flex;gap:4px;align-items:center">
-      <button class="btn-icon" onclick="buildCustomList()" id="build-custom-btn" style="display:none;background:#6c5ce7;color:#fff">Build Graph</button>
+      <button class="btn-icon" onclick="toggleCustomPanel()" id="build-custom-btn" style="display:none;background:#6c5ce7;color:#fff">&#x2630; Panel</button>
     </div>
   </div>
 </div>
 
-<!-- Custom list textarea (dropdown) -->
+<div id="share-overlay">
+  <div id="share-box">
+    <span class="close" onclick="toggleShare()">&#x2715;</span>
+    <h3>Share this graph</h3>
+    <div class="url-display" id="share-url"></div>
+    <div class="share-actions">
+      <button class="btn-primary" onclick="copyShareUrl()">Copy URL</button>
+      <span class="copied-msg" id="copied-msg">Copied!</span>
+    </div>
+  </div>
+</div>
+
+<!-- Custom list panel — right-side slide-out drawer -->
 <div id="custom-panel">
+  <div class="panel-header">
+    <h3>Custom Article List</h3>
+    <button class="close-btn" onclick="toggleCustomPanel()" title="Close panel">&#x2715;</button>
+  </div>
+  <div class="pagepile-row">
+    <input type="number" id="pagepile-id" placeholder="PagePile ID…" min="1" title="Enter a PagePile ID to fetch a list of articles">
+    <button class="btn-icon" onclick="fetchPagePile()" id="pagepile-fetch-btn">Fetch</button>
+    <span class="pagepile-status" id="pagepile-status"></span>
+  </div>
+  <div class="category-row">
+    <input type="text" id="category-name" placeholder="Category name…" title="Enter a Wikipedia category name">
+    <select id="category-depth" title="Subcategory depth">
+      <option value="0">Depth 0</option>
+      <option value="1">Depth 1</option>
+      <option value="2">Depth 2</option>
+    </select>
+    <button class="btn-icon" onclick="fetchCategory()" id="category-fetch-btn">Fetch</button>
+    <span class="cat-status" id="cat-status"></span>
+  </div>
   <textarea id="article-list" placeholder="Enter one Wikipedia article title per line...
 
 Example:
@@ -344,9 +483,16 @@ Machine learning
 Deep learning
 Neural network
 ChatGPT"></textarea>
-  <div class="input-actions">
-    <button class="btn-primary" onclick="buildCustomList()">Build Graph</button>
-    <span class="hint">One article per line.<br>Spaces or underscores OK.</span>
+  <div class="panel-footer">
+    <div class="info-row">
+      <span id="article-count"></span>
+      <button class="btn-primary" onclick="buildCustomList()">Build Graph</button>
+    </div>
+    <span class="warning" id="count-warning">
+      &#9888; More than 200 articles may take a while to fetch and build.
+      Consider using a smaller list for a faster experience.
+    </span>
+    <span style="font-size:10px;color:#666;line-height:1.4">One article per line. Spaces or underscores OK.</span>
   </div>
 </div>
 
@@ -369,9 +515,17 @@ ChatGPT"></textarea>
   <div id="about-box">
     <span class="close" onclick="toggleAbout()">&#x2715;</span>
     <h2>wikigraph</h2>
-    <div class="subtitle">Interactive Wikipedia connection graphs</div>
-    <h3>How it works</h3>
-    <p>Articles are fetched from the <strong>Hatnote API</strong> (Top Articles mode) or entered directly (Custom List mode). Each article is enriched with categories, wikilinks, and extracts from the <strong>MediaWiki API</strong>. spaCy NLP extracts named entities (people, organizations, places) from the summaries.</p>
+    <div class="subtitle">Explore how Wikipedia articles connect</div>
+    <h3>What it does</h3>
+    <p>wikigraph builds interactive connection graphs from Wikipedia articles. It shows how articles link to each other — through <strong>direct wikilinks</strong>, <strong>shared categories</strong>, and <strong>shared named entities</strong> (people, places, organizations). Each article is colored by topic cluster (Sports, Music, Politics, etc.).</p>
+    <h3>Data sources</h3>
+    <ul>
+      <li><strong>Top Articles</strong> — daily top 100 most-viewed from the Hatnote API</li>
+      <li><strong>Custom List</strong> — paste your own article titles (one per line)</li>
+      <li><strong>PagePile</strong> — import a list by PagePile ID</li>
+      <li><strong>Category</strong> — fetch articles from a Wikipedia category (with subcategory depth)</li>
+    </ul>
+    <p>Article metadata (categories, wikilinks, extracts, images) comes from the <strong>MediaWiki API</strong>. spaCy NLP extracts named entities from article summaries.</p>
     <p>Three connection types are identified:</p>
     <div class="swatch-row">
       <span><span class="line-swatch" style="background:#6c5ce7"></span> Wikilink</span>
@@ -382,18 +536,20 @@ ChatGPT"></textarea>
     <div class="swatch-row" id="about-colors"></div>
     <h3>Controls</h3>
     <ul>
-      <li><strong>Top Articles</strong> — daily top 100 from Hatnote API</li>
-      <li><strong>Custom List</strong> — paste your own article titles</li>
-      <li><strong>Search</strong> — filter articles by name</li>
-      <li><strong>Ignore</strong> — exclude specific articles</li>
+      <li><strong>Top Articles / Custom List</strong> — switch modes</li>
+      <li><strong>Search</strong> — filter visible articles by name</li>
       <li><strong>Spacing</strong> — adjust node repulsion</li>
-      <li><strong>Play</strong> — auto-advance through articles</li>
+      <li><strong>Helpers / Labels / Legend</strong> — toggle visual layers</li>
+      <li><strong>📷 Article / Wikidata</strong> — switch thumbnail source</li>
+      <li><strong>▶ Play</strong> — auto-advance through articles</li>
       <li><strong>⟳ Refresh</strong> — clear cache and rebuild</li>
+      <li><strong>Ignore / Hide</strong> — exclude articles or groups</li>
+      <li><strong>🔗 Share</strong> — copy a bookmarkable URL of the current graph</li>
       <li><strong>Hover</strong> — highlight connections</li>
-      <li><strong>Click</strong> — article details + connected articles</li>
+      <li><strong>Click</strong> an article — side panel with summary and connections</li>
     </ul>
-    <h3>Data</h3>
-    <p>Built with Python (httpx, NetworkX, spaCy), D3.js v7, and Wikipedia APIs. Top-100 data from the <a href="https://github.com/hatnote/top" target="_blank" style="color:#6c5ce7">hatnote/top</a> project.</p>
+    <h3>Tech</h3>
+    <p>Python pipeline (httpx, NetworkX, spaCy) + D3.js v7 frontend. Top Articles data from the <a href="https://github.com/hatnote/top" target="_blank" style="color:#6c5ce7">hatnote/top</a> project. PagePile from <a href="https://pagepile.toolforge.org/" target="_blank" style="color:#6c5ce7">pagepile.toolforge.org</a>.</p>
     <p style="margin-top:8px;font-size:11px;color:#666">User-Agent: <span id="about-ua"></span></p>
   </div>
 </div>
@@ -403,6 +559,25 @@ ChatGPT"></textarea>
     <div class="progress-spinner"></div>
     <div id="progress-message">Loading...</div>
     <div id="progress-step"></div>
+  </div>
+</div>
+
+<div id="startup-overlay">
+  <div id="startup-box">
+    <h2>wikigraph</h2>
+    <div class="subtitle">Wikipedia connection graphs</div>
+    <div class="startup-buttons">
+      <button class="startup-btn" onclick="startWithDate()">
+        <span class="icon">📊</span>
+        Top 100 Articles
+        <span class="desc">Today's most-viewed articles</span>
+      </button>
+      <button class="startup-btn" onclick="startWithCustom()">
+        <span class="icon">✏️</span>
+        Custom List
+        <span class="desc">Paste your own article titles</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -437,14 +612,31 @@ let lastFetchUrl = "";
 // ─── Mode switching ────────────────────────────────────────
 
 function switchMode(mode) {
+  // Warn when switching away from custom mode with unsaved list
+  if (currentMode === "custom" && mode === "date") {
+    var ta = document.getElementById("article-list");
+    if (ta.value.trim()) {
+      if (!confirm("You have an unsaved article list. Switching to Top Articles will discard it. Continue?")) {
+        return;
+      }
+      ta.value = "";
+      document.getElementById("article-count").textContent = "";
+      document.getElementById("count-warning").classList.remove("visible");
+    }
+  }
+
   currentMode = mode;
   document.querySelectorAll(".mode-tab").forEach(t =>
     t.classList.toggle("active", t.dataset.mode === mode));
   document.getElementById("date-controls").style.display = mode === "date" ? "" : "none";
   document.getElementById("custom-controls").style.display = mode === "custom" ? "" : "none";
-  document.getElementById("custom-panel").classList.toggle("open", mode === "custom");
-  document.getElementById("build-custom-btn").style.display = mode === "custom" ? "" : "none";
-  // Adjust graph height
+  if (mode === "custom") {
+    document.getElementById("custom-panel").classList.add("open");
+    document.getElementById("build-custom-btn").style.display = "";
+  } else {
+    document.getElementById("custom-panel").classList.remove("open");
+    document.getElementById("build-custom-btn").style.display = "none";
+  }
   setTimeout(updateGraphLayout, 50);
   syncUrl();
 }
@@ -452,13 +644,18 @@ function switchMode(mode) {
 function updateGraphLayout() {
   const container = document.getElementById("graph-container");
   const panel = document.getElementById("custom-panel");
-  let topOffset = 78;
+  var topOffset = 78;
+  var rightOffset = 0;
   if (currentMode === "custom" && panel.classList.contains("open")) {
-    topOffset += panel.offsetHeight;
+    rightOffset = 400;
   }
   container.style.top = topOffset + "px";
+  container.style.right = rightOffset + "px";
   if (simulation) {
-    svg.attr("height", window.innerHeight - topOffset);
+    var W = window.innerWidth - rightOffset;
+    var H = window.innerHeight - topOffset;
+    svg.attr("width", W).attr("height", H);
+    simulation.force("center", d3.forceCenter(W / 2, H / 2));
     simulation.alpha(0.3).restart();
   }
 }
@@ -466,12 +663,22 @@ function updateGraphLayout() {
 // ─── Article count ─────────────────────────────────────────
 
 document.getElementById("article-list").addEventListener("input", function() {
-  const lines = this.value.split("\n").filter(l => l.trim());
-  const el = document.getElementById("article-count");
+  var lines = this.value.split("\n").filter(function(l) { return l.trim(); });
+  var el = document.getElementById("article-count");
   el.textContent = lines.length
     ? lines.length + " article" + (lines.length === 1 ? "" : "s")
     : "";
+  var warn = document.getElementById("count-warning");
+  if (lines.length > 200) {
+    warn.classList.add("visible");
+  } else {
+    warn.classList.remove("visible");
+  }
 });
+function toggleCustomPanel() {
+  document.getElementById("custom-panel").classList.toggle("open");
+  updateGraphLayout();
+}
 
 // ─── Setup ──────────────────────────────────────────────────
 
@@ -530,7 +737,15 @@ function setupOnce() {
     });
   });
 
-  document.getElementById("date-picker").addEventListener("change", onDateChange);
+  // Date picker: only process on Enter key or when focus leaves the field.
+  // Prevents premature loads while user is still typing year/month/day digits.
+  document.getElementById("date-picker").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onDateChange();
+    }
+  });
+  document.getElementById("date-picker").addEventListener("blur", onDateChange);
   // ResizeObserver for custom panel
   if (window.ResizeObserver) {
     new ResizeObserver(() => updateGraphLayout()).observe(document.getElementById("custom-panel"));
@@ -609,6 +824,28 @@ function syncUrl() {
   if (order !== "rank") params.set("order", order);
   var imgSrc = loadImageSource();
   if (imgSrc !== "article") params.set("image", imgSrc);
+
+  // Persist import source params for bookmarking
+  if (currentMode === "custom") {
+    var ppId = document.getElementById("pagepile-id").value.trim();
+    var catName = document.getElementById("category-name").value.trim();
+    var catDepth = document.getElementById("category-depth").value;
+    if (ppId) {
+      params.set("pagepile", ppId);
+    } else if (catName) {
+      params.set("category", catName);
+      if (catDepth !== "0") params.set("depth", catDepth);
+    } else {
+      var taVal = document.getElementById("article-list").value.trim();
+      if (taVal) {
+        var listTitles = taVal.split("\n").map(function(t) { return t.trim(); }).filter(Boolean);
+        if (listTitles.length <= 50) {
+          params.set("list", listTitles.join(","));
+        }
+      }
+    }
+  }
+
   const qs = params.toString();
   const newUrl = window.location.pathname + (qs ? "?" + qs : "");
   window.history.replaceState({}, "", newUrl);
@@ -653,6 +890,112 @@ function applyPostRenderParams(params) {
   syncUrl();
   if (params.has("play")) setTimeout(function() { togglePlayback(); }, 1500);
 }
+
+// ─── PagePile import ──────────────────────────────────────
+
+async function fetchPagePile() {
+  var input = document.getElementById("pagepile-id");
+  var btn = document.getElementById("pagepile-fetch-btn");
+  var status = document.getElementById("pagepile-status");
+  var pileId = input.value.trim();
+
+  if (!pileId || isNaN(pileId) || parseInt(pileId) < 1) {
+    status.textContent = "Enter a valid ID";
+    status.className = "pagepile-status error";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Fetching…";
+  status.className = "pagepile-status loading";
+
+  try {
+    var resp = await fetch("/api/pagepile?id=" + encodeURIComponent(pileId));
+    if (!resp.ok) {
+      var msg = resp.status === 404 ? "ID not found" : resp.status === 500 ? "ID not found or unavailable" : "Error " + resp.status;
+      status.textContent = msg;
+      status.className = "pagepile-status error";
+      return;
+    }
+    var data = await resp.json();
+    if (!data.titles || data.titles.length === 0) {
+      status.textContent = "Empty list";
+      status.className = "pagepile-status error";
+      return;
+    }
+
+    var textarea = document.getElementById("article-list");
+    textarea.value = (textarea.value.trim() ? textarea.value.trim() + "\n" : "") + data.titles.join("\n");
+    textarea.dispatchEvent(new Event("input"));
+
+    status.textContent = data.total + " articles from enwiki";
+    status.className = "pagepile-status";
+  } catch (e) {
+    status.textContent = "Network error";
+    status.className = "pagepile-status error";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Allow Enter key on PagePile ID input
+var _ppi = document.getElementById("pagepile-id");
+_ppi.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") { e.preventDefault(); fetchPagePile(); }
+});
+
+// ─── Category fetch ────────────────────────────────────────
+
+async function fetchCategory() {
+  var input = document.getElementById("category-name");
+  var depth = document.getElementById("category-depth").value;
+  var btn = document.getElementById("category-fetch-btn");
+  var status = document.getElementById("cat-status");
+  var name = input.value.trim();
+
+  if (!name) {
+    status.textContent = "Enter a category name";
+    status.className = "cat-status error";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Fetching…";
+  status.className = "cat-status loading";
+
+  try {
+    var resp = await fetch("/api/category?name=" + encodeURIComponent(name) + "&depth=" + depth);
+    if (!resp.ok) {
+      var msg = resp.status === 404 ? "Not found or empty" : resp.status === 500 ? "Request failed" : "Error " + resp.status;
+      status.textContent = msg;
+      status.className = "cat-status error";
+      return;
+    }
+    var data = await resp.json();
+    if (!data.titles || data.titles.length === 0) {
+      status.textContent = "Empty category";
+      status.className = "cat-status error";
+      return;
+    }
+
+    var textarea = document.getElementById("article-list");
+    textarea.value = (textarea.value.trim() ? textarea.value.trim() + "\n" : "") + data.titles.join("\n");
+    textarea.dispatchEvent(new Event("input"));
+
+    status.textContent = data.total + " articles";
+    status.className = "cat-status";
+  } catch (e) {
+    status.textContent = "Network error";
+    status.className = "cat-status error";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+var _cni = document.getElementById("category-name");
+_cni.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") { e.preventDefault(); fetchCategory(); }
+});
 
 // ─── Build custom list ──────────────────────────────────────
 
@@ -771,14 +1114,24 @@ function refetch() {
 }
 
 async function loadGraph(url) {
-  showProgress("Connecting...");
+  showProgress("Loading...");
   try {
     var data = await fetchGraph(url);
     renderGraph(data);
     applyFilters();
   } catch (e) {
     hideProgress();
-    document.getElementById("loading-indicator").textContent = "Failed: " + e.message;
+    var msg = e.message || "";
+    var parts = (document.getElementById("date-picker").value || "").split("-");
+    if (parts.length === 3 && (msg.includes("404") || msg.includes("Not Found") || msg.includes("No Hatnote data") || msg.includes("No data"))) {
+      var months = ["January","February","March","April","May","June","July",
+                    "August","September","October","November","December"];
+      var d = new Date(parts[0], parts[1]-1, parts[2]);
+      var friendly = months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+      showError("No data available for " + friendly);
+      return;
+    }
+    showError(msg);
   }
 }
 
@@ -800,7 +1153,7 @@ async function loadLatestDate() {
       d.setDate(d.getDate() - 1);
     }
   }
-  document.getElementById("loading-indicator").textContent = "No recent data found";
+  showError("No recent data found — try an earlier date.");
 }
 
 function onDateChange() {
@@ -831,8 +1184,16 @@ function hideProgress() {
   document.getElementById("progress-overlay").classList.remove("visible");
 }
 function showError(msg) {
-  hideProgress();
-  document.getElementById("loading-indicator").textContent = "Error: " + msg;
+  var overlay = document.getElementById("progress-overlay");
+  var box = document.getElementById("progress-box");
+  document.getElementById("progress-message").textContent = msg;
+  document.getElementById("progress-step").textContent = "";
+  box.classList.add("error");
+  overlay.classList.add("visible");
+  setTimeout(function() {
+    overlay.classList.remove("visible");
+    box.classList.remove("error");
+  }, 5000);
 }
 
 // ─── Legend ─────────────────────────────────────────────────
@@ -926,7 +1287,7 @@ function renderGraph(data) {
   buildLegend();
 
   var topOffset = parseInt(document.getElementById("graph-container").style.top) || 78;
-  var W = window.innerWidth;
+  var W = document.getElementById("graph-container").offsetWidth || window.innerWidth;
   var H = window.innerHeight - topOffset;
 
   simulation = d3.forceSimulation(nodes)
@@ -1249,7 +1610,7 @@ function playbackStep(articles) {
   // Center and zoom
   var z = loadPlaybackZoom();
   var topOffset = parseInt(document.getElementById("graph-container").style.top) || 78;
-  var W = window.innerWidth;
+  var W = document.getElementById("graph-container").offsetWidth || window.innerWidth;
   var H = window.innerHeight - topOffset;
   svg.transition().duration(600).call(zoom.transform,
     d3.zoomIdentity.translate(W / 2 - d.x * z, H / 2 - d.y * z).scale(z));
@@ -1350,6 +1711,36 @@ function toggleUASettings() {
   }
 }
 
+// ─── Share ──────────────────────────────────────────────────
+
+function toggleShare() {
+  var ov = document.getElementById("share-overlay");
+  if (!ov.classList.contains("visible")) {
+    document.getElementById("share-url").textContent = window.location.href;
+    document.getElementById("copied-msg").classList.remove("visible");
+  }
+  ov.classList.toggle("visible");
+}
+
+function copyShareUrl() {
+  var url = window.location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() {
+      document.getElementById("copied-msg").classList.add("visible");
+    });
+  } else {
+    // Fallback for older browsers
+    var ta = document.createElement("textarea");
+    ta.value = url;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    document.getElementById("copied-msg").classList.add("visible");
+  }
+}
+
 // ─── About ──────────────────────────────────────────────────
 
 function toggleAbout() {
@@ -1371,6 +1762,23 @@ function toggleAbout() {
   ov.classList.toggle("visible");
 }
 
+// ─── Startup overlay ──────────────────────────────────────
+
+function showStartupOverlay() {
+  document.getElementById("startup-overlay").classList.add("visible");
+}
+function hideStartupOverlay() {
+  document.getElementById("startup-overlay").classList.remove("visible");
+}
+function startWithDate() {
+  hideStartupOverlay();
+  loadLatestDate();
+}
+function startWithCustom() {
+  hideStartupOverlay();
+  switchMode("custom");
+}
+
 // ─── Refresh ────────────────────────────────────────────────
 
 async function hardRefresh() {
@@ -1388,7 +1796,7 @@ async function hardRefresh() {
     applyFilters();
   } catch(e) {
     hideProgress();
-    document.getElementById("loading-indicator").textContent = "Refresh failed";
+    showError("Refresh failed—try again or choose a different date.");
   }
 }
 
@@ -1402,6 +1810,12 @@ function fmtViews(v) {
 }
 function truncate(s, n) { return s.length > n ? s.slice(0, n-1) + "\u2026" : s; }
 function escHtml(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function removeRunParam() {
+  var url = new URL(window.location.href);
+  url.searchParams.delete("run");
+  window.history.replaceState(null, "", url.toString());
+}
 
 // ─── Init ───────────────────────────────────────────────────
 
@@ -1417,9 +1831,38 @@ function escHtml(s) { var d = document.createElement("div"); d.textContent = s; 
   setupOnce();
   var params = new URLSearchParams(window.location.search);
 
-  // Check for custom mode
+  // Check for custom mode and handle import params
   if (params.get("mode") === "custom") {
+    // Set import source values BEFORE switchMode so syncUrl picks them up
+    if (params.get("pagepile")) {
+      document.getElementById("pagepile-id").value = params.get("pagepile");
+    } else if (params.get("category")) {
+      document.getElementById("category-name").value = params.get("category");
+      if (params.get("depth")) {
+        document.getElementById("category-depth").value = params.get("depth");
+      }
+    } else if (params.get("list")) {
+      var titles = params.get("list").split(",").map(function(t) { return t.trim(); }).filter(Boolean);
+      var textarea = document.getElementById("article-list");
+      textarea.value = titles.join("\n");
+      textarea.dispatchEvent(new Event("input"));
+    }
+
     switchMode("custom");
+    var doRun = params.get("run") === "1";
+
+    // Now trigger async fetches for pagepile / category
+    if (params.get("pagepile")) {
+      fetchPagePile().then(function() {
+        if (doRun) { buildCustomList(); removeRunParam(); }
+      });
+    } else if (params.get("category")) {
+      fetchCategory().then(function() {
+        if (doRun) { buildCustomList(); removeRunParam(); }
+      });
+    } else if (params.get("list")) {
+      if (doRun) { buildCustomList(); removeRunParam(); }
+    }
   }
 
   applyPreGraphParams(params);
@@ -1428,8 +1871,10 @@ function escHtml(s) { var d = document.createElement("div"); d.textContent = s; 
   if (params.has("date")) {
     document.getElementById("date-picker").value = params.get("date");
     onDateChange();
+  } else if (params.get("mode") === "custom") {
+    // Don't auto-load; user chose custom mode via URL
   } else {
-    loadLatestDate();
+    showStartupOverlay();
   }
 })();
 </script>

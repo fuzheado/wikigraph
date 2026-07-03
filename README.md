@@ -137,7 +137,9 @@ print(f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
 ### 6. Run the web server
 
-> **Note**: A neutral startup modal has been added to let users choose which mode to load. However, a bug remains where the top‑100 graph still auto‑loads on page load. This will be fixed in a future release.
+On startup, a welcome overlay lets you choose between **Top 100 Articles**
+(today's most-viewed) and **Custom List** (paste your own titles). No graph
+auto-loads — you pick your mode first.
 
 The web server serves the full web app from `index.html` with a polished
 D3.js interface and two modes for building graphs:
@@ -163,11 +165,21 @@ day's Hatnote top 100 and generate a graph. Same data as the CLI
 
 #### Custom List mode
 
-Click the **Custom List** tab to switch modes. Paste one Wikipedia article
-title per line into the textarea, then click **Build Graph**.
+Click the **Custom List** tab to switch modes. A right-side drawer panel
+slides in where you can enter article titles. Three data sources are available:
 
-Accepted from `architecture-articles.txt`, PagePile exports, or any other
-list — one title per line.
+**Manual entry** — Paste one Wikipedia article title per line.
+
+**PagePile import** — Enter a PagePile ID and click Fetch. The titles are
+loaded from the PagePile API and appended to your list.
+
+**Category import** — Enter a Wikipedia category name (e.g. `Artificial
+intelligence`) with a subcategory depth (0–2), capped at 500 articles.
+Articles are fetched from the MediaWiki API and appended.
+
+Click **Build Graph** to generate the graph from your list. Sources can
+be combined — fetch from a category, add from a PagePile, then type a
+few more by hand.
 
 ```text
 Artificial intelligence
@@ -190,6 +202,8 @@ ChatGPT
 | **🔍 zoom, Aa size, 🔢 order** | Playback zoom, label font size, play order (rank/random) |
 | **📷 Article / Wikidata** | Toggle image source for node thumbnails (no rebuild needed) |
 | **⟳ Refresh** | Clear cache and rebuild (date mode) |
+| **🔗 Share** | Copy a bookmarkable URL of the current graph |
+| **☰ Panel** | Toggle the Custom List panel (in Custom List mode) |
 | **Ignore** list | Exclude specific articles from the graph |
 | **Hide** buttons | One-click filters (Social media, Geography) |
 | **⚙ UA settings** | View/change User-Agent; non-compliant agents trigger a warning |
@@ -220,16 +234,37 @@ All UI state can be set via URL parameters for bookmarking:
 | `order` | `rank` or `random` | `rank` | Playback order |
 | `image` | `article` or `wikidata` | `article` | Image source for node thumbnails |
 
+**Import parameters** (require `mode=custom`):
+
+| Parameter | Values | Description |
+|---|---|---|
+| `pagepile` | PagePile ID | Fetch article titles from a PagePile list |
+| `category` | category name | Fetch articles from a Wikipedia category |
+| `depth` | `0`, `1`, `2` | Subcategory depth (requires `category`) |
+| `list` | comma-separated | Article titles (URL-encoded, max ~50 for URL length) |
+| `run` | `1` | Auto-build graph after importing (removed from URL after build) |
+
+Examples:
+
+```
+?mode=custom&pagepile=40743&run=1
+?mode=custom&category=Philosophy&depth=1
+?mode=custom&list=ChatGPT,Deep%20learning,OpenAI
+```
+
+Use the **🔗 Share** button to copy a bookmarkable URL of the current state.
+
 #### API endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/` | GET | Serves `index.html` |
 | `/api/graph?year=&month=&day=` | GET | NDJSON stream for date-based build |
-| `/api/graph-from-list` | POST | NDJSON stream for custom article list
-  (`{"titles": [...]}`) |
+| `/api/graph-from-list` | POST | NDJSON stream for custom article list (`{"titles": [...]}`) |
+| `/api/pagepile?id=` | GET | Fetch article titles from a PagePile ID |
+| `/api/category?name=&depth=` | GET | Fetch article titles from a Wikipedia category |
 
-Both API endpoints stream NDJSON with progress messages during the build,
+Both graph endpoints stream NDJSON with progress messages during the build,
 followed by the graph data on success or an error on failure.
 
 ---
@@ -237,21 +272,27 @@ followed by the graph data on success or an error on failure.
 ## Data Pipeline
 
 ```
-Hatnote API ──► fetch_top100() ──► [article list]
-                                       │
+                    ┌──────────────────────┐
+                    │     Data Sources      │
+                    │  • Hatnote top 100    │
+                    │  • Custom list        │
+                    │  • PagePile import    │
+                    │  • Category members   │
+                    └──────────┬───────────┘
+                               │
           MediaWiki API ◄── fetch_all_metadata() (async, 3 concurrent)
-                                       │
-                             ┌─────────┼─────────┐
-                        categories    links    extracts
-                             │          │          │
-                    is_meaningful_     │     extract_entities()
-                      category()       │     (spaCy NER)
-                             │          │          │
-                             ▼          ▼          ▼
-                        ┌─────────────────────────────┐
-                        │      build_graph()          │
-                        │  NetworkX construction:     │
-                        │  • article nodes + clusters │
+                               │
+                     ┌─────────┼─────────┐
+                categories    links    extracts
+                     │          │          │
+            is_meaningful_     │     extract_entities()
+              category()       │     (spaCy NER)
+                     │          │          │
+                     ▼          ▼          ▼
+                ┌─────────────────────────────┐
+                │      build_graph()          │
+                │  NetworkX construction:     │
+                │  • article nodes + clusters │
                         │  • wikilink edges           │
                         │  • category helpers         │
                         │  • entity helpers           │
@@ -616,7 +657,9 @@ wikigraph/
 ├── config.py          Environment variables and .env configuration
 ├── cache.py           File-based JSON cache with TTL
 ├── sources/           Data source plugins
-│   └── hatnote.py     Hatnote daily top-100 API
+│   ├── hatnote.py     Hatnote daily top-100 API
+│   ├── pagepile.py    PagePile API — fetch article lists by ID
+│   └── category.py    MediaWiki category member fetcher (with depth)
 ├── enricher/          MediaWiki API async batch enrichment
 │   ├── mw_api.py      Fetch categories, links, extracts, page images
 │   └── wikidata_images.py  Batch fetch P18 images from Wikidata API
@@ -626,12 +669,12 @@ wikigraph/
 │   └── ner.py         spaCy NER with entity deduplication + noise filtering
 ├── graph/             NetworkX graph construction
 │   ├── builder.py     Node, edge, and helper node construction
-│   └── serializers.py NetworkX → D3 JSON serialization
+│   └── serializers.py NetworkX → D3 JSON + Cytoscape conversion
 └── pipeline.py        Orchestration: fetch → enrich → analyze → build → export
 
-index.html              D3.js force-directed graph web application
+index.html              D3.js force-directed graph web application (~1,500 lines)
 view_graph.py          Browser-based interactive graph viewer (static file)
-server.py              HTTP server with web UI and graph API endpoints
+server.py              HTTP server (~190 lines) with web UI, graph API, and import endpoints
 ```
 
 ---

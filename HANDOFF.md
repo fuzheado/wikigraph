@@ -7,9 +7,11 @@ Wikidata. Fetches article metadata, extracts named entities, identifies shared
 categories and wikilinks, and exports a D3.js force-directed graph with three
 connection types (wikilinks, shared categories, shared entities).
 
-Two input modes:
+Four input sources:
 - **Top Articles** — daily top 100 from the Hatnote API
 - **Custom List** — any list of Wikipedia article titles (one per line)
+- **PagePile** — fetch article lists by PagePile ID
+- **Category** — fetch members of a Wikipedia category (with subcategory depth 0–2)
 
 ## Quickstart
 
@@ -34,7 +36,9 @@ wikigraph/
 ├── config.py              Environment variables and .env configuration
 ├── cache.py               File-based JSON cache with TTL
 ├── sources/
-│   └── hatnote.py         Hatnote daily top-100 API
+│   ├── hatnote.py         Hatnote daily top-100 API
+│   ├── pagepile.py        PagePile API — fetch article lists by ID
+│   └── category.py        Category member fetcher (with subcategory depth)
 ├── enricher/
 │   ├── mw_api.py          MediaWiki API: categories, links, extracts, page images, QIDs
 │   └── wikidata_images.py Wikidata P18 image batch fetcher
@@ -44,12 +48,12 @@ wikigraph/
 │   └── ner.py             spaCy NER with entity deduplication + noise filtering
 ├── graph/
 │   ├── builder.py         NetworkX graph construction (nodes, edges, helpers)
-│   └── serializers.py     NetworkX → D3 JSON serialization
+│   └── serializers.py     NetworkX → D3 JSON + Cytoscape serialization
 └── pipeline.py            Orchestration: fetch → enrich → analyze → build → export
 
-index.html                 D3.js web application (served by server.py)
+index.html                 D3.js web application (~1,500 lines, served by server.py)
 view_graph.py              Static file viewer for pre-built JSON
-server.py                  HTTP server: serves index.html + API endpoints
+server.py                  HTTP server (~190 lines): web UI + 4 API endpoints
 Dockerfile                 Toolforge container build
 Procfile                   Build service process definition
 DEPLOY_TOOLFORGE.md        Toolforge deployment guide
@@ -58,33 +62,39 @@ DEPLOY_TOOLFORGE.md        Toolforge deployment guide
 ## Data Pipeline
 
 ```
-Hatnote API ──► fetch_top100() ──► [article list]
-                                       │
+                    ┌──────────────────────┐
+                    │     Data Sources      │
+                    │  • Hatnote top 100    │
+                    │  • Custom list        │
+                    │  • PagePile import    │
+                    │  • Category members   │
+                    └──────────┬───────────┘
+                               │
           MediaWiki API (async, 3 concurrent) ◄── fetch_all_metadata()
           (categories, links, extracts, page images, wikibase_item QID)
-                                       │
-                             ┌─────────┼────────┐
-                        categories   links   extracts
-                             │         │        │
-                    is_meaningful_      │  extract_entities()
-                      category()        │  (spaCy NER)
-                             │          │        │
-                        Wikidata P18 image fetch (batch, 50/request)
-                                       │
-                             ┌─────────┼────────┐
-                             ▼         ▼        ▼
-                        ┌──────────────────────────┐
-                        │      build_graph()        │
-                        │  NetworkX construction:   │
-                        │  • article nodes          │
-                        │  • wikilink edges         │
-                        │  • category helpers       │
-                        │  • entity helpers         │
-                        └───────────┬──────────────┘
-                                    │
-                           serialize_graph()
-                                    │
-                         {"nodes": [...], "links": [...]}
+                               │
+                     ┌─────────┼────────┐
+                categories   links   extracts
+                     │         │        │
+            is_meaningful_      │  extract_entities()
+              category()        │  (spaCy NER)
+                     │          │        │
+                Wikidata P18 image fetch (batch, 50/request)
+                               │
+                     ┌─────────┼────────┐
+                     ▼         ▼        ▼
+                ┌──────────────────────────┐
+                │      build_graph()        │
+                │  NetworkX construction:   │
+                │  • article nodes          │
+                │  • wikilink edges         │
+                │  • category helpers       │
+                │  • entity helpers         │
+                └───────────┬──────────────┘
+                            │
+                   serialize_graph()
+                            │
+                 {"nodes": [...], "links": [...]}
 ```
 
 ### Three connection types
@@ -105,19 +115,29 @@ Hatnote API ──► fetch_top100() ──► [article list]
 ## Key Files
 
 ### `server.py`
-Minimal HTTP server (~100 lines). Serves `index.html` as a static file.
-Intercepts two API endpoints for NDJSON streaming:
+HTTP server (~190 lines). Serves `index.html` as a static file.
+Four API endpoints:
 - `GET /api/graph?year=&month=&day=` — date-based build via `build_graph()`
 - `POST /api/graph-from-list` — custom list via `build_graph_from_list()`
+- `GET /api/pagepile?id=` — fetch article titles from a PagePile ID
+- `GET /api/category?name=&depth=` — fetch titles from a Wikipedia category
 
-Both return NDJSON: progress messages (`{"type":"progress","message":"..."}`)
+All graph endpoints return NDJSON: progress messages (`{"type":"progress","message":"..."}`)
 followed by the final graph (`{"type":"graph","data":{...}}`) or error.
+Import endpoints return JSON with `{titles, total, ...}`.
 
 ### `index.html`
-Standalone (~1400 lines) D3.js web app. Key features:
+Standalone (~1,500 lines) D3.js web app. Key features:
+- **Startup overlay** — choose Top 100 or Custom List on load; no auto-loading
 - Two-row control bar with mode tabs (Top Articles / Custom List)
-- Date picker with ◀ ▶ navigation
-- Custom List textarea (one article per line)
+- Date picker with ◀ ▶ navigation; only fires on Enter/blur (no partial-date loads)
+- **Custom List right-side drawer** (400px slide-in panel)
+  - Manual entry textarea (one article per line)
+  - **PagePile import** — enter ID, click Fetch, titles appended
+  - **Category import** — enter category name + depth (0–2), capped at 500 articles
+  - 200+ article warning; source results append so you can combine sources
+  - ☰ Panel toggle button in control bar
+- **Mode switching guard** — warns before discarding unsaved custom list
 - Search, Helpers/Labels/Legend toggles, Spacing slider
 - Play mode (auto-advance, speed/zoom/font/order controls)
 - Image source toggle (Article MW / Wikidata P18) — live switch, no rebuild
@@ -125,6 +145,10 @@ Standalone (~1400 lines) D3.js web app. Key features:
 - ⟳ Refresh (clear cache + rebuild)
 - ⚙ UA settings panel; ⚠ Failed articles warning
 - About modal with legend
+- **Error overlay** — centered, auto-hiding error messages (no raw 404 URLs)
+- **URL import parameters** — `pagepile=`, `category=`, `depth=`, `list=`, `run=1`
+  auto-populate the custom list and optionally build the graph
+- **🔗 Share button** — copies a bookmarkable URL of the current graph state
 - URL parameter sync for all state (bookmarkable)
 - Side panel with image, summary, connected articles
 - Hover highlighting, drag, zoom/pan
@@ -156,9 +180,20 @@ using MD5 hash path. Handles rate limits with exponential backoff.
 - File-based JSON cache via `cache.py`
 - Clear with `rm -rf .cache` or `?refresh=1` in API
 
-## Recent Changes (Commit History)
+## Recent Changes (Current Session)
 
 ```
+—        fix: startup overlay — no more auto-load on page load; blank canvas until user chooses
+—        feat: right-side drawer panel for Custom List (was flat bottom dropdown)
+—        feat: PagePile import source (wikigraph/sources/pagepile.py + /api/pagepile)
+—        feat: Category import source (wikigraph/sources/category.py + /api/category)
+—        fix: date picker only processes on Enter/blur, not on partial typing
+—        fix: graceful error messages (centered overlay, friendly date-format text, no raw 404 URLs)
+—        fix: mode switch guard — warns before discarding unsaved custom list
+—        fix: custom list summaries now populate from MediaWiki extracts
+—        fix: Python 3.14 compatibility — moved cgi import inside cytoscape handler
+—        fix: duplicate POST handler code removed from server.py
+
 9ab4e47  feat: Wikidata P18 image enrichment + image source toggle
 92f43bc  feat: standalone web app UI (index.html) with full control panel
 124cc72  docs: web server section + polish README
@@ -169,7 +204,7 @@ b0ea6b1  feat: Toolforge deployment infrastructure
 ## Running the Server
 
 ```bash
-python server.py           # default port 8000
+python server.py           # default port 8000 (works with Python 3.10–3.14)
 python server.py 8080      # custom port
 ```
 
@@ -196,6 +231,21 @@ http://localhost:8000/?date=2026-05-29&play=1&speed=5&zoom=2&order=random&image=
 Key params: `date`, `mode=custom`, `ignore`, `spacing`, `helpers`, `labels`,
 `legend`, `speed`, `zoom`, `fontsize`, `order`, `image`.
 
+**Import parameters** (require `mode=custom`):
+- `pagepile=NNNN` — fetch articles from a PagePile ID
+- `category=NAME` — fetch articles from a category (with optional `depth=0-2`)
+- `list=TITLE1,TITLE2,...` — comma-separated article titles (URL-encoded, max ~50)
+- `run=1` — auto-build the graph after importing (stripped from URL after build)
+
+Examples:
+```
+?mode=custom&pagepile=40743&run=1
+?mode=custom&category=Philosophy&depth=1
+?mode=custom&list=ChatGPT,Deep%20learning,OpenAI&run=1
+```
+
+Use the **🔗 Share** button in the control bar to copy the current URL.
+
 ## Toolforge Deployment
 
 See `DEPLOY_TOOLFORGE.md` for deploying to Toolforge as a build service.
@@ -203,10 +253,29 @@ See `DEPLOY_TOOLFORGE.md` for deploying to Toolforge as a build service.
 
 ## Future Possibilities
 
-- **PagePile import** — Accept PagePile export format (URL or paste)
+### Completed
+- ~~PagePile import~~ — Done. Enter ID, Fetch, titles appended to list.
+- ~~Category import~~ — Done. Category name + depth selector, MW API fetch.
+
+### High priority
+- **Focus subgraph** — Click a node to show only it and its direct connections.
+  The biggest quality-of-life improvement for navigating dense graphs.
+- **Pin/unpin nodes** — Visual indicator for pinned nodes in the side panel.
+  Drag already sets fx/fy under the hood.
+
+### Medium priority
+- **Copy article title** — Small button in the side panel to copy the title.
+- **Build subgraph from selection** — Select 3 nodes, rebuild graph from just
+  those articles and their interconnections.
+
+### Backlog
+- **Add to ignore from side panel** — Per-article hide button (less destructive
+  than the global ignore list).
+- **Expand connections** — Fetch all articles that link to a selected node
+  (not just the ones already in the graph) and add them.
+- **Graph export** — Download graph as PNG/SVG/JSON
 - **Wikidata SPARQL queries** — Pre-built SPARQL queries as data sources
 - **Geospatial map** — Integrate Kepler.gl for geographic visualization
-- **Graph export** — Download graph as PNG/SVG/JSON
 - **Article filtering** — Filter by cluster, view count range, date range
 - **Node grouping** — Collapse categories/entities into their articles
 - **Multi-wiki** — Support other Wikimedia projects (Commons, Wikisource)
@@ -224,3 +293,5 @@ See `DEPLOY_TOOLFORGE.md` for deploying to Toolforge as a build service.
 5. **User-Agent** — Must include contact info (email or URL) or MW API will
    429 rate-limit. Set via `WIKI_USER_AGENT` env var, `.env` file, or the
    ⚙ UA panel in the UI.
+6. **Python 3.13+** — The `cgi` module was removed. The cytoscape upload endpoint
+   returns 501 on Python 3.13+. All other endpoints work normally.

@@ -22,7 +22,14 @@ def fetch_json(url, max_retries=2):
                 resp = client.get(url)
                 resp.raise_for_status()
                 return resp.json()
-        except Exception as e:
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise  # Don't retry 404s — the resource doesn't exist
+            if attempt < max_retries:
+                time.sleep(0.5)
+            else:
+                raise
+        except Exception:
             if attempt < max_retries:
                 time.sleep(0.5)
             else:
@@ -42,7 +49,12 @@ def fetch_top100(year, month, day):
         return cached
 
     url = HATNOTE_URL.format(year=year, month=month, day=day)
-    data = fetch_json(url)
+    try:
+        data = fetch_json(url)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise ValueError(f"No Hatnote data for {year}/{month}/{day}") from None
+        raise
     articles = []
     for a in data["articles"]:
         title = a["article"]
