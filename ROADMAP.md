@@ -33,7 +33,7 @@ See [MULTI_LANGUAGE.md](MULTI_LANGUAGE.md) for the full analysis. Steps 1–3 co
 
 | Component | Status |
 |---|---|
-| `?wiki=` parameter + wiki selector in UI | ✅ Done — 12 languages |
+| `?wiki=` parameter + wiki selector in UI | ✅ Done — 28 languages (all Hatnote) |
 | MediaWiki API (swap hostname per language) | ✅ Done |
 | Hatnote Top 100 (swap language code) | ✅ Done |
 | MW API cache keys (lang prefix) | ✅ Done |

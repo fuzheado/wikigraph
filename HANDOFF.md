@@ -147,7 +147,7 @@ Standalone (~1,500 lines) D3.js web app. Key features:
 - ⚙ UA settings panel; ⚠ Failed articles warning
 - About modal with legend
 - **Error overlay** — centered, auto-hiding error messages (no raw 404 URLs)
-- **Wiki language selector** — 12 languages (ar, de, en, es, fr, it, ja, nl, pl, pt, ru, zh)
+- **Wiki language selector** — 28 languages (all Hatnote-supported editions)
   — switches MW API, Hatnote, and spaCy model per language
 - **URL import parameters** — `pagepile=`, `category=`, `depth=`, `list=`, `run=1`
   auto-populate the custom list and optionally build the graph

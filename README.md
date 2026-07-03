@@ -139,7 +139,7 @@ print(f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
 On startup, a welcome overlay lets you choose between **Top 100 Articles**
 (today's most-viewed) and **Custom List** (paste your own titles), plus a
-**language selector** for the Wikipedia edition (12 languages supported).
+**language selector** for the Wikipedia edition (28 languages supported).
 No graph auto-loads — you pick your mode and language first.
 
 The web server serves the full web app from `index.html` with a polished
@@ -224,7 +224,7 @@ All UI state can be set via URL parameters for bookmarking:
 |---|---|---|---|
 | `date` | `YYYY-MM-DD` | today | Load a specific date |
 | `mode` | `custom` | — | Start in Custom List mode |
-| `wiki` | language code | `en` | Wikipedia language edition (ar, de, en, es, fr, it, ja, nl, pl, pt, ru, zh) |
+| `wiki` | language code | `en` | Wikipedia language edition (28 Hatnote-supported languages: ar, bn, ca, cs, da, de, el, en, es, et, fa, fi, fr, gl, hu, id, it, kn, ko, lv, no, or, pa, sv, ta, te, ur, zh) |
 | `ignore` | comma-separated | defaults | Articles to exclude |
 | `spacing` | `0`–`500` | `135` | Force repulsion |
 | `helpers` | `0` or `1` | `1` | Show helpers |

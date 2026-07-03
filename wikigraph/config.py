@@ -34,19 +34,36 @@ _load_dotenv()
 # ── Multi-language support ──────────────────────────────────
 
 # Language code → wiki hostname for supported Wikipedias
+# All 28 languages supported by Hatnote Top 100 + MW API
 WIKI_LANGUAGES = {
-    "ar": "ar.wikipedia.org",
-    "de": "de.wikipedia.org",
-    "en": "en.wikipedia.org",
-    "es": "es.wikipedia.org",
-    "fr": "fr.wikipedia.org",
-    "it": "it.wikipedia.org",
-    "ja": "ja.wikipedia.org",
-    "nl": "nl.wikipedia.org",
-    "pl": "pl.wikipedia.org",
-    "pt": "pt.wikipedia.org",
-    "ru": "ru.wikipedia.org",
-    "zh": "zh.wikipedia.org",
+    "ar": "ar.wikipedia.org",    # العربية
+    "bn": "bn.wikipedia.org",    # বাংলা
+    "ca": "ca.wikipedia.org",    # Català
+    "cs": "cs.wikipedia.org",    # Čeština
+    "da": "da.wikipedia.org",    # Dansk
+    "de": "de.wikipedia.org",    # Deutsch
+    "el": "el.wikipedia.org",    # Ελληνικά
+    "en": "en.wikipedia.org",    # English
+    "es": "es.wikipedia.org",    # Español
+    "et": "et.wikipedia.org",    # Eesti
+    "fa": "fa.wikipedia.org",    # فارسی
+    "fi": "fi.wikipedia.org",    # Suomi
+    "fr": "fr.wikipedia.org",    # Français
+    "gl": "gl.wikipedia.org",    # Galego
+    "hu": "hu.wikipedia.org",    # Magyar
+    "id": "id.wikipedia.org",    # Bahasa Indonesia
+    "it": "it.wikipedia.org",    # Italiano
+    "kn": "kn.wikipedia.org",    # ಕನ್ನಡ
+    "ko": "ko.wikipedia.org",    # 한국어
+    "lv": "lv.wikipedia.org",    # Latviešu
+    "no": "no.wikipedia.org",    # Norsk bokmål
+    "or": "or.wikipedia.org",    # ଓଡ଼ିଆ
+    "pa": "pa.wikipedia.org",    # ਪੰਜਾਬੀ
+    "sv": "sv.wikipedia.org",    # Svenska
+    "ta": "ta.wikipedia.org",    # தமிழ்
+    "te": "te.wikipedia.org",    # తెలుగు
+    "ur": "ur.wikipedia.org",    # اردو
+    "zh": "zh.wikipedia.org",    # 中文
 }
 
 
@@ -85,16 +102,18 @@ MW_CACHE_TTL = int(os.environ.get("WIKI_MW_CACHE_TTL", "604800"))  # 7d
 # Language code → spaCy NER model name for supported languages
 SPACY_MODELS = {
     "ar": "ar_core_news_sm",
+    "ca": "ca_core_news_sm",
+    "da": "da_core_news_sm",
     "de": "de_core_news_sm",
+    "el": "el_core_news_sm",
     "en": "en_core_web_sm",
     "es": "es_core_news_sm",
+    "fi": "fi_core_news_sm",
     "fr": "fr_core_news_sm",
     "it": "it_core_news_sm",
-    "ja": "ja_core_news_sm",
-    "nl": "nl_core_news_sm",
-    "pl": "pl_core_news_sm",
-    "pt": "pt_core_news_sm",
-    "ru": "ru_core_news_sm",
+    "ko": "ko_core_news_sm",
+    "no": "nb_core_news_sm",
+    "sv": "sv_core_news_sm",
     "zh": "zh_core_web_sm",
 }
 # Multilingual fallback model (lower accuracy, broader coverage)
