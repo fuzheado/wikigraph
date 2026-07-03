@@ -1597,6 +1597,13 @@ function highlightNode(d) {
     var tid = l.target.id || l.target;
     return sid === d.id || tid === d.id;
   });
+
+  // Pan to center on the node
+  var topOffset = parseInt(document.getElementById("graph-container").style.top) || 78;
+  var W = document.getElementById("graph-container").offsetWidth || window.innerWidth;
+  var H = window.innerHeight - topOffset;
+  svg.transition().duration(500).call(zoom.transform,
+    d3.zoomIdentity.translate(W / 2 - d.x, H / 2 - d.y).scale(1));
 }
 
 // ─── Side panel ─────────────────────────────────────────────
