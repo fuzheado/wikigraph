@@ -1240,6 +1240,7 @@ async function loadLatestDate() {
     document.getElementById("date-picker").value = dateStr;
     var parts = dateStr.split("-");
     var url = "/api/graph?year=" + parts[0] + "&month=" + String(parseInt(parts[1])) + "&day=" + String(parseInt(parts[2]));
+    url += "&wiki=" + encodeURIComponent(document.getElementById("wiki-select").value);
     var ua = loadUA();
     if (ua) url += "&user_agent=" + encodeURIComponent(ua);
     try {
