@@ -19,7 +19,11 @@ async def fetch_single_metadata(client, title, sem, api_url=MW_API):
     Uses an asyncio.Semaphore to cap concurrent requests. Retries up to 3 times
     with exponential backoff on failure. pllimit=500 is sufficient for each article.
     """
-    cache_key = f"{title}.json"
+    # Include wiki language in cache key to avoid cross-language cache pollution
+    import re
+    lang_match = re.search(r'https?://([a-z-]+)\.wikipedia\.org', api_url)
+    lang_prefix = (lang_match.group(1) + "/") if lang_match else ""
+    cache_key = f"{lang_prefix}{title}.json"
     cached = _cache_get("mw", cache_key, MW_CACHE_TTL)
     if cached is not None:
         return title, cached

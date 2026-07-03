@@ -52,8 +52,8 @@ def build_graph(year, month, day, min_entity_share=3, verbose=True,
 
     headers = {"User-Agent": ua}
 
-    log(f"Fetching top 100 for {year}/{month}/{day}...")
-    articles = fetch_top100(year, month, day)
+    log(f"Fetching top 100 for {year}/{month}/{day} ({wiki})...")
+    articles = fetch_top100(year, month, day, wiki=wiki)
     if ignore_articles:
         ignore_set = {a.lower().replace(" ", "_") for a in ignore_articles}
         ignore_titles = {a.lower() for a in ignore_articles}
