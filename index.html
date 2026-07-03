@@ -1576,6 +1576,29 @@ function hoverOff() {
   document.getElementById("tooltip").style.display = "none";
 }
 
+function highlightNode(d) {
+  var connected = new Set();
+  connected.add(d.id);
+  graphData.links.forEach(function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    if (sid === d.id) connected.add(tid);
+    if (tid === d.id) connected.add(sid);
+  });
+  node.classed("faded", function(n) { return !connected.has(n.id); });
+  node.classed("highlighted", function(n) { return n.id === d.id; });
+  link.classed("faded", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    return sid !== d.id && tid !== d.id;
+  });
+  link.classed("highlighted", function(l) {
+    var sid = l.source.id || l.source;
+    var tid = l.target.id || l.target;
+    return sid === d.id || tid === d.id;
+  });
+}
+
 // ─── Side panel ─────────────────────────────────────────────
 
 function showArticle(id) {
@@ -1585,6 +1608,7 @@ function showArticle(id) {
 
 function clickNode(d) {
   document.getElementById("tooltip").style.display = "none";
+  highlightNode(d);
   var panel = document.getElementById("side-panel");
   var content = document.getElementById("panel-content");
 
@@ -1651,7 +1675,10 @@ function clickNode(d) {
   panel.classList.add("open");
 }
 
-function closePanel() { document.getElementById("side-panel").classList.remove("open"); }
+function closePanel() {
+  document.getElementById("side-panel").classList.remove("open");
+  hoverOff();
+}
 
 // ─── Playback ───────────────────────────────────────────────
 
