@@ -186,6 +186,7 @@ ChatGPT
 | **Spacing** slider | Adjust force simulation repulsion |
 | **▶ Play / ⏹ Stop** | Auto-advance through articles; click to cycle speed (2s/3s/5s/8s) |
 | **🔍 zoom, Aa size, 🔢 order** | Playback zoom, label font size, play order (rank/random) |
+| **📷 Article / Wikidata** | Toggle image source for node thumbnails (no rebuild needed) |
 | **⟳ Refresh** | Clear cache and rebuild (date mode) |
 | **Ignore** list | Exclude specific articles from the graph |
 | **Hide** buttons | One-click filters (Social media, Geography) |
@@ -215,6 +216,7 @@ All UI state can be set via URL parameters for bookmarking:
 | `zoom` | `0.5`–`3` | `1` | Playback zoom level |
 | `fontsize` | `7`–`14` | `10` | Label font size |
 | `order` | `rank` or `random` | `rank` | Playback order |
+| `image` | `article` or `wikidata` | `article` | Image source for node thumbnails |
 
 #### API endpoints
 
@@ -257,6 +259,18 @@ Hatnote API ──► fetch_top100() ──► [article list]
                                        │
                             {"nodes": [...], "links": [...]}
 ```
+
+#### Image Sources
+
+Article node images come from two sources, togglable in the web UI:
+
+| Source | Field | Coverage |
+|---|---|---|
+| **Article** (MW) | `page_image_url` | Wikipedia article thumbnails from the MediaWiki API |
+| **Wikidata** (P18) | `wikidata_image_url` | Wikimedia Commons images from the Wikidata P18 property (broader coverage) |
+
+The Wikidata image source fills many gaps where MW API thumbnails aren't available.
+Images are fetched via batch Wikidata API calls after the MW metadata step.
 
 **Three connection types** are discovered:
 
@@ -602,7 +616,8 @@ wikigraph/
 ├── sources/           Data source plugins
 │   └── hatnote.py     Hatnote daily top-100 API
 ├── enricher/          MediaWiki API async batch enrichment
-│   └── mw_api.py      Fetch categories, links, extracts, page images
+│   ├── mw_api.py      Fetch categories, links, extracts, page images
+│   └── wikidata_images.py  Batch fetch P18 images from Wikidata API
 ├── analyzer/          NLP and classification
 │   ├── categories.py  Maintenance category regex filter (80+ patterns)
 │   ├── clustering.py  Keyword-based topic clustering (11 topics)
