@@ -572,6 +572,8 @@ ChatGPT"></textarea>
       <li><strong>Category</strong> — fetch articles from a Wikipedia category (with subcategory depth)</li>
     </ul>
     <p>Article metadata (categories, wikilinks, extracts, images) comes from the <strong>MediaWiki API</strong>. spaCy NLP extracts named entities from article summaries.</p>
+    <h3>Language status</h3>
+    <div id="about-lang-status" style="font-size:11px;color:#ccc;line-height:1.8"></div>
     <p>Three connection types are identified:</p>
     <div class="swatch-row">
       <span><span class="line-swatch" style="background:#6c5ce7"></span> Wikilink</span>
@@ -1856,6 +1858,50 @@ function toggleAbout() {
   }
   ov.classList.toggle("visible");
 }
+
+function toggleAbout() {
+  var ov = document.getElementById("about-overlay");
+  document.getElementById("about-ua").textContent =
+    document.getElementById("ua-input").value || loadUA() || "(default)";
+  var colors = document.getElementById("about-colors");
+  if (!colors.hasChildNodes()) {
+    CLUSTER_ORDER.forEach(function(c) {
+      var span = document.createElement("span");
+      var swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = getClusterColor(c);
+      span.appendChild(swatch);
+      span.appendChild(document.createTextNode(" " + c));
+      colors.appendChild(span);
+    });
+  }
+
+  // Populate language status
+  var wiki = document.getElementById("wiki-select").value;
+  var hatnoteOk = LANG_CAPS.hatnote.indexOf(wiki) !== -1;
+  var spacyModel = LANG_CAPS.spacy[wiki] || null;
+  var hasPatterns = LANG_CAPS.catPatterns.indexOf(wiki) !== -1;
+
+  var statusHtml = "";
+  statusHtml += hatnoteOk
+    ? '<span style="color:#00b894">&#10003;</span> Top Articles (Hatnote)\n'
+    : '<span style="color:#f39c12">&#9888;</span> Top Articles unavailable (Custom List only)\n';
+  statusHtml += spacyModel
+    ? '<span style="color:#00b894">&#10003;</span> Named entities: ' + spacyModel + '\n'
+    : '<span style="color:#f39c12">&#9888;</span> Named entities: multilingual fallback (reduced accuracy)\n';
+  statusHtml += hasPatterns
+    ? '<span style="color:#00b894">&#10003;</span> Category filter: pattern + statistical\n'
+    : '<span style="color:#f39c12">&#9888;</span> Category filter: statistical only\n';
+  document.getElementById("about-lang-status").innerHTML = statusHtml.replace(/\n/g, "<br>");
+
+  ov.classList.toggle("visible");
+}
+
+var LANG_CAPS = {
+  hatnote: ["ar","bn","ca","cs","da","de","el","en","es","et","fa","fi","fr","gl","hu","id","it","kn","ko","lv","no","or","pa","sv","ta","te","ur","zh"],
+  spacy: {"ar":"ar_core_news_sm","ca":"ca_core_news_sm","da":"da_core_news_sm","de":"de_core_news_sm","el":"el_core_news_sm","en":"en_core_web_sm","es":"es_core_news_sm","fi":"fi_core_news_sm","fr":"fr_core_news_sm","it":"it_core_news_sm","ko":"ko_core_news_sm","no":"nb_core_news_sm","sv":"sv_core_news_sm","zh":"zh_core_web_sm"},
+  catPatterns: ["en"]
+};
 
 // ─── Startup overlay ──────────────────────────────────────
 
