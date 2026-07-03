@@ -1598,12 +1598,13 @@ function highlightNode(d) {
     return sid === d.id || tid === d.id;
   });
 
-  // Pan to center on the node
+  // Pan to center on the node, preserving current zoom level
   var topOffset = parseInt(document.getElementById("graph-container").style.top) || 78;
   var W = document.getElementById("graph-container").offsetWidth || window.innerWidth;
   var H = window.innerHeight - topOffset;
+  var currentZoom = d3.zoomTransform(svg.node()).k;
   svg.transition().duration(500).call(zoom.transform,
-    d3.zoomIdentity.translate(W / 2 - d.x, H / 2 - d.y).scale(1));
+    d3.zoomIdentity.translate(W / 2 - d.x * currentZoom, H / 2 - d.y * currentZoom).scale(currentZoom));
 }
 
 // ─── Side panel ─────────────────────────────────────────────
