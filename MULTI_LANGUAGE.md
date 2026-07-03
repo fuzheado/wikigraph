@@ -1,6 +1,6 @@
 # Multi-language Support
 
-Analysis of what it would take for wikigraph to support any language edition
+Analysis of what it would take for wikigrapher to support any language edition
 of Wikipedia — not just English.
 
 ---

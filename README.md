@@ -1,4 +1,4 @@
-# wikigraph
+# wikigrapher
 
 Build interactive connection graphs from Wikipedia, Wikimedia Commons, and
 Wikidata items. Fetches article metadata, extracts named entities, identifies

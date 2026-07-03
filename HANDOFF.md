@@ -1,4 +1,4 @@
-# wikigraph — Handoff Document
+# wikigrapher — Handoff Document
 
 ## What It Is
 

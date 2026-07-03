@@ -1,4 +1,4 @@
-# wikigraph — Roadmap
+# wikigrapher — Roadmap
 
 ## Near-term (next session or two)
 
