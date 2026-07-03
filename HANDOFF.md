@@ -253,6 +253,9 @@ See `DEPLOY_TOOLFORGE.md` for deploying to Toolforge as a build service.
 
 ## Future Possibilities
 
+See **[ROADMAP.md](ROADMAP.md)** for the full roadmap with priorities and status.
+See **[MULTI_LANGUAGE.md](MULTI_LANGUAGE.md)** for the multi-language support analysis.
+
 ### Completed
 - ~~PagePile import~~ — Done. Enter ID, Fetch, titles appended to list.
 - ~~Category import~~ — Done. Category name + depth selector, MW API fetch.
