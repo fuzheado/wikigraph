@@ -1,7 +1,8 @@
 """Wikidata image enrichment — batch fetch P18 (image) for article Wikidata items.
 
 Queries the Wikidata API for P18 claims in batches, then resolves the
-Commons filenames to browser-accessible thumbnail URLs.
+Commons filenames to browser-accessible thumbnail URLs. Results are cached
+for 7 days since Wikidata P18 images rarely change.
 
 Usage:
     images = fetch_wikidata_images(["Q11660", "Q42", "Q76"])
@@ -21,6 +22,9 @@ COMMONS_FILE_BASE = "https://commons.wikimedia.org/wiki/Special:FilePath"
 
 # Maximum QIDs per batch request
 BATCH_SIZE = 50
+
+# Cache TTL for Wikidata image lookups (7 days — images rarely change)
+WD_IMAGE_CACHE_TTL = 604800
 
 
 def _commons_filename_to_url(filename, thumb_width=300):
@@ -73,6 +77,7 @@ def fetch_wikidata_images(qids, headers=None):
     """Fetch P18 (image) URLs for a list of Wikidata QIDs.
 
     Batches requests (50 QIDs at a time) to the Wikidata API.
+    Results are cached for 7 days to avoid redundant API calls.
     Returns a dict mapping QID → thumbnail URL (or empty string).
 
     Args:
@@ -82,6 +87,8 @@ def fetch_wikidata_images(qids, headers=None):
     Returns:
         dict: {qid: thumbnail_url_or_empty}
     """
+    from ..cache import _cache_get, _cache_set
+
     if not qids:
         return {}
 
@@ -90,13 +97,26 @@ def fetch_wikidata_images(qids, headers=None):
 
     # Remove wikibase_item entries that are empty
     valid_qids = [q for q in qids if q and q.startswith("Q")]
-
     if not valid_qids:
         return {}
 
+    # Check cache first
+    uncached_qids = []
+    for qid in valid_qids:
+        cache_key = f"wd_img_{qid}.json"
+        cached = _cache_get("mw", cache_key, WD_IMAGE_CACHE_TTL)
+        if cached is not None:
+            result[qid] = cached
+        else:
+            uncached_qids.append(qid)
+
+    if not uncached_qids:
+        return result
+
+    # Fetch uncached QIDs from Wikidata API in batches
     with httpx.Client(headers=hdrs, timeout=30.0) as client:
-        for i in range(0, len(valid_qids), BATCH_SIZE):
-            batch = valid_qids[i:i + BATCH_SIZE]
+        for i in range(0, len(uncached_qids), BATCH_SIZE):
+            batch = uncached_qids[i:i + BATCH_SIZE]
             ids = "|".join(batch)
 
             params = {
@@ -124,6 +144,8 @@ def fetch_wikidata_images(qids, headers=None):
                             result[qid] = url
                         else:
                             result[qid] = ""
+                        # Cache individual result
+                        _cache_set("mw", f"wd_img_{qid}.json", result[qid])
 
                     break
                 except Exception as e:
