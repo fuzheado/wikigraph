@@ -33,3 +33,4 @@ Thumbs.db
 
 # Generated data — all build output graphs
 *.json
+.playwright-cli/
