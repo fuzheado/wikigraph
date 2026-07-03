@@ -50,6 +50,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .date-nav {
   background: #2a2a4a; border: 1px solid #444; color: #999; padding: 2px 6px;
   border-radius: 4px; font-size: 12px; cursor: pointer; line-height: 1;
+  white-space: nowrap; flex-shrink: 0;
 }
 .date-nav:hover { border-color: #6c5ce7; color: #e0e0e0; }
 
@@ -390,7 +391,7 @@ svg { width: 100%; height: 100%; }
     <div class="sep"></div>
 
     <!-- Date mode controls -->
-    <span id="date-controls">
+    <span id="date-controls" style="white-space:nowrap;flex-shrink:0">
       <button class="date-nav" onclick="goToDate(-1)" title="Previous day">&#9664;</button>
       <input type="date" id="date-picker">
       <button class="date-nav" onclick="goToDate(1)" title="Next day">&#9654;</button>
