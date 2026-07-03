@@ -29,21 +29,22 @@ ignore list — useful for quickly decluttering.
 ## Medium-term
 
 ### Multi-language support
-See [MULTI_LANGUAGE.md](MULTI_LANGUAGE.md) for the full analysis. Summary:
+See [MULTI_LANGUAGE.md](MULTI_LANGUAGE.md) for the full analysis. Steps 1–3 completed:
 
-| Component | Difficulty | Effort |
-|---|---|---|
-| MediaWiki API (swap hostname) | Trivial | One config change |
-| Hatnote Top 100 (swap language code) | Trivial | One URL param |
-| PagePile / Wikidata / Page images | Trivial | Already multi-language |
-| Category filtering (maintenance patterns) | Moderate | Statistical fallback + per-language overrides |
-| spaCy NER (25 languages have models) | Hard | Language→model map + `xx_ent_wiki_sm` fallback |
-| Topic clustering (English keywords) | Hard | Wikidata-based clustering (language-agnostic) |
-| UI i18n | Hard (optional) | Core function works with English UI on any wiki |
+| Component | Status |
+|---|---|
+| `?wiki=` parameter + wiki selector in UI | ✅ Done — 12 languages |
+| MediaWiki API (swap hostname per language) | ✅ Done |
+| Hatnote Top 100 (swap language code) | ✅ Done |
+| MW API cache keys (lang prefix) | ✅ Done |
+| Statistical category filter (language-agnostic) | ✅ Done |
+| spaCy model selection (12 languages) | ✅ Done |
+| Startup language selector | ✅ Done |
 
-Recommended first step: add a `?wiki=` URL parameter and wiki selector. Swap
-MW API hostname + Hatnote language code. Works immediately for ~30 languages,
-degrading gracefully where NER/clustering don't have full coverage.
+Remaining:
+- Per-language category filter patterns (currently English-only)
+- Wikidata-based topic clustering (replaces English keywords)
+- UI i18n (optional — works with English UI on any wiki)
 
 ### Graph export
 Download graph as PNG, SVG, or JSON. The `view_graph.py` viewer already has a
@@ -94,6 +95,11 @@ Python 3.13+ compatibility (currently `cgi`-dependent) and a dedicated upload UI
 
 ## Completed ✅
 
+- **Multi-language support — Steps 1-3** — wiki parameter, MW API/Hatnote/spaCy
+  per language, statistical category filter, 12 languages (ar, de, en, es, fr, it,
+  ja, nl, pl, pt, ru, zh)
+- **Startup language selector** — Pick Wikipedia edition before generating
+- **Spacing slider extended** — 0–500 range (was 0–100)
 - **PagePile import** — Enter ID, Fetch, titles appended to custom list
 - **Category import** — Category name + depth selector (0–2), capped at 500 articles, MW API fetch
 - **Startup overlay** — Choose mode on load; no more auto-loading bug

@@ -138,8 +138,9 @@ print(f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 ### 6. Run the web server
 
 On startup, a welcome overlay lets you choose between **Top 100 Articles**
-(today's most-viewed) and **Custom List** (paste your own titles). No graph
-auto-loads — you pick your mode first.
+(today's most-viewed) and **Custom List** (paste your own titles), plus a
+**language selector** for the Wikipedia edition (12 languages supported).
+No graph auto-loads — you pick your mode and language first.
 
 The web server serves the full web app from `index.html` with a polished
 D3.js interface and two modes for building graphs:
@@ -223,8 +224,9 @@ All UI state can be set via URL parameters for bookmarking:
 |---|---|---|---|
 | `date` | `YYYY-MM-DD` | today | Load a specific date |
 | `mode` | `custom` | — | Start in Custom List mode |
+| `wiki` | language code | `en` | Wikipedia language edition (ar, de, en, es, fr, it, ja, nl, pl, pt, ru, zh) |
 | `ignore` | comma-separated | defaults | Articles to exclude |
-| `spacing` | `0`–`100` | `27` | Force repulsion |
+| `spacing` | `0`–`500` | `135` | Force repulsion |
 | `helpers` | `0` or `1` | `1` | Show helpers |
 | `labels` | `0` or `1` | `0` | Show labels |
 | `legend` | `0` or `1` | `0` | Show legend |

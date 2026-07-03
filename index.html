@@ -217,6 +217,15 @@ svg { width: 100%; height: 100%; }
 #startup-box .startup-btn:hover { border-color: #6c5ce7; background: #2a2a4e; color: #fff; }
 #startup-box .startup-btn .icon { font-size: 28px; }
 #startup-box .startup-btn .desc { font-size: 11px; font-weight: 400; color: #888; }
+#startup-box .startup-lang {
+  margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+#startup-box .startup-lang label { font-size: 12px; color: #888; }
+#startup-box .startup-lang select {
+  background: #2a2a4a; border: 1px solid #444; color: #ccc;
+  padding: 3px 6px; border-radius: 4px; font-size: 12px; outline: none; cursor: pointer;
+}
+#startup-box .startup-lang select:focus { border-color: #6c5ce7; }
 
 #progress-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -409,7 +418,7 @@ svg { width: 100%; height: 100%; }
     <div class="sep"></div>
     <div class="spacing-slider">
       <span>Spacing</span>
-      <input type="range" id="spacing" min="0" max="100" value="27">
+      <input type="range" id="spacing" min="0" max="500" value="135">
     </div>
     <div class="sep"></div>
     <label><input type="checkbox" id="toggle-helpers" checked> Helpers</label>
@@ -587,6 +596,23 @@ ChatGPT"></textarea>
   <div id="startup-box">
     <h2>wikigraph</h2>
     <div class="subtitle">Wikipedia connection graphs</div>
+    <div class="startup-lang">
+      <label for="startup-wiki-select">Wikipedia:</label>
+      <select id="startup-wiki-select">
+        <option value="ar">العربية</option>
+        <option value="de">Deutsch</option>
+        <option value="en" selected>English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="it">Italiano</option>
+        <option value="ja">日本語</option>
+        <option value="nl">Nederlands</option>
+        <option value="pl">Polski</option>
+        <option value="pt">Português</option>
+        <option value="ru">Русский</option>
+        <option value="zh">中文</option>
+      </select>
+    </div>
     <div class="startup-buttons">
       <button class="startup-btn" onclick="startWithDate()">
         <span class="icon">📊</span>
@@ -623,7 +649,7 @@ let graphData, svg, simulation, link, node, nodeMap;
 let container, nodeGroup, linkGroup;
 let ignoreList = [];
 let activeFilters = new Set();
-let spacingValue = 27;
+let spacingValue = 135;
 let currentMode = "date";
 let playbackIndex = -1;
 let playbackTimer = null;
@@ -837,7 +863,7 @@ function syncUrl() {
   if (ignoreList.length > 0 && JSON.stringify(ignoreList) !== JSON.stringify(DEFAULT_IGNORE)) {
     params.set("ignore", ignoreList.join(","));
   }
-  if (spacingValue !== 27) params.set("spacing", String(spacingValue));
+  if (spacingValue !== 135) params.set("spacing", String(spacingValue));
   if (!document.getElementById("toggle-helpers").checked) params.set("helpers", "0");
   if (!document.getElementById("toggle-labels").checked) params.set("labels", "0");
   if (document.getElementById("toggle-legend").checked) params.set("legend", "1");
@@ -851,6 +877,10 @@ function syncUrl() {
   if (order !== "rank") params.set("order", order);
   var imgSrc = loadImageSource();
   if (imgSrc !== "article") params.set("image", imgSrc);
+
+  // Persist wiki language
+  var wikiSel = document.getElementById("wiki-select").value;
+  if (wikiSel !== "en") params.set("wiki", wikiSel);
 
   // Persist import source params for bookmarking
   if (currentMode === "custom") {
@@ -903,6 +933,9 @@ function applyPreGraphParams(params) {
   if (params.has("spacing")) {
     spacingValue = parseInt(params.get("spacing"));
     document.getElementById("spacing").value = spacingValue;
+  }
+  if (params.has("wiki")) {
+    document.getElementById("wiki-select").value = params.get("wiki");
   }
 }
 
@@ -1395,7 +1428,8 @@ function ticked() {
 }
 
 function updateSpacing(val) {
-  var mult = 0.2 + (val / 100) * 2.96;
+  var maxVal = parseInt(document.getElementById("spacing").max) || 100;
+  var mult = 0.2 + (val / maxVal) * 2.96;
   simulation.force("charge", d3.forceManyBody().strength(function(d) {
     return d.type === "helper" ? -40 * mult : -120 * mult;
   }));
@@ -1794,18 +1828,28 @@ function toggleAbout() {
 // ─── Startup overlay ──────────────────────────────────────
 
 function showStartupOverlay() {
+  // Sync startup wiki selector from URL or control bar
+  var params = new URLSearchParams(window.location.search);
+  var wiki = params.get("wiki") || document.getElementById("wiki-select").value || "en";
+  document.getElementById("startup-wiki-select").value = wiki;
   document.getElementById("startup-overlay").classList.add("visible");
 }
 function hideStartupOverlay() {
   document.getElementById("startup-overlay").classList.remove("visible");
 }
 function startWithDate() {
+  syncStartupWiki();
   hideStartupOverlay();
   loadLatestDate();
 }
 function startWithCustom() {
+  syncStartupWiki();
   hideStartupOverlay();
   switchMode("custom");
+}
+function syncStartupWiki() {
+  var startupWiki = document.getElementById("startup-wiki-select").value;
+  document.getElementById("wiki-select").value = startupWiki;
 }
 
 // ─── Refresh ────────────────────────────────────────────────

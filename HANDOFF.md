@@ -129,6 +129,7 @@ Import endpoints return JSON with `{titles, total, ...}`.
 ### `index.html`
 Standalone (~1,500 lines) D3.js web app. Key features:
 - **Startup overlay** — choose Top 100 or Custom List on load; no auto-loading
+  - **Language selector** — pick Wikipedia edition (12 languages) before generating
 - Two-row control bar with mode tabs (Top Articles / Custom List)
 - Date picker with ◀ ▶ navigation; only fires on Enter/blur (no partial-date loads)
 - **Custom List right-side drawer** (400px slide-in panel)
@@ -146,6 +147,8 @@ Standalone (~1,500 lines) D3.js web app. Key features:
 - ⚙ UA settings panel; ⚠ Failed articles warning
 - About modal with legend
 - **Error overlay** — centered, auto-hiding error messages (no raw 404 URLs)
+- **Wiki language selector** — 12 languages (ar, de, en, es, fr, it, ja, nl, pl, pt, ru, zh)
+  — switches MW API, Hatnote, and spaCy model per language
 - **URL import parameters** — `pagepile=`, `category=`, `depth=`, `list=`, `run=1`
   auto-populate the custom list and optionally build the graph
 - **🔗 Share button** — copies a bookmarkable URL of the current graph state
@@ -183,6 +186,10 @@ using MD5 hash path. Handles rate limits with exponential backoff.
 ## Recent Changes (Current Session)
 
 ```
+—        feat: multi-language support — ?wiki= param, MW API/Hatnote/spaCy per language
+—        feat: startup language selector — pick Wikipedia edition before generating
+—        fix: pass wiki to fetch_top100; language-prefixed MW API cache keys
+—        feat: statistical category filter — language-agnostic maintenance removal
 —        fix: startup overlay — no more auto-load on page load; blank canvas until user chooses
 —        feat: right-side drawer panel for Custom List (was flat bottom dropdown)
 —        feat: PagePile import source (wikigraph/sources/pagepile.py + /api/pagepile)
