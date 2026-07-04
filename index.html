@@ -1802,6 +1802,9 @@ function playbackStep(articles) {
     return sid === d.id || tid === d.id;
   });
 
+  // Open side panel with article info
+  clickNode(d);
+
   playbackTimer = setTimeout(function() { playbackStep(articles); }, loadPlaybackSpeed());
 }
 
