@@ -716,6 +716,7 @@ let currentMode = "date";
 let playbackIndex = -1;
 let playbackTimer = null;
 let playbackActive = false;
+let panelTimer = null;
 let lastFetchUrl = "";
 
 // ─── Mode switching ────────────────────────────────────────
@@ -1802,8 +1803,9 @@ function playbackStep(articles) {
     return sid === d.id || tid === d.id;
   });
 
-  // Open side panel with article info
-  clickNode(d);
+  // Open side panel with article info after zoom completes
+  var dCopy = d;
+  panelTimer = setTimeout(function() { clickNode(dCopy); }, 650);
 
   playbackTimer = setTimeout(function() { playbackStep(articles); }, loadPlaybackSpeed());
 }
@@ -1812,6 +1814,7 @@ function stopPlayback() {
   playbackActive = false;
   playbackIndex = -1;
   if (playbackTimer) { clearTimeout(playbackTimer); playbackTimer = null; }
+  if (panelTimer) { clearTimeout(panelTimer); panelTimer = null; }
   document.getElementById("playback-btn").textContent = "\u25b6 Play";
   document.getElementById("playback-btn").classList.remove("active");
   hoverOff();
